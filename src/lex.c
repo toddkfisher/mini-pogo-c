@@ -13,7 +13,6 @@
 
 /*
  THEORY OF OPERATION:
-
    Input is taken from char (*g_lex_input_function)(void *p_personal_data, bool peek_char), a global
    function pointer variable. Set the function and pointer to its data with
    lex_set_input_function(fn, void *data).  g_lex_input_function() should be ready to
