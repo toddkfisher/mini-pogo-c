@@ -5,7 +5,7 @@
 #include <cmdline-switch.h>
 
 #include "lex.h"
-#include "mp-prototypes.h"
+#include "parse.h"
 
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
@@ -101,7 +101,7 @@ typedef struct {
   bool f_first_read_occured;
 } FILE_READ;
 
-char file_input(void *p_data, bool peek_char) {
+char file_input(void *const p_data, bool const peek_char) {
   FILE_READ *p_fr = (FILE_READ *) p_data;
   char retval;
   if (peek_char && p_fr->f_first_read_occured) {
@@ -113,7 +113,7 @@ char file_input(void *p_data, bool peek_char) {
   return retval;
 }
 
-void test_lex(char *filename)
+void test_lex(char *const filename)
 {
   FILE_READ fr;
   uint32_t lex_unit_n = 0;
@@ -125,16 +125,33 @@ void test_lex(char *filename)
     do {
       lex_scan();
       //lex_print(&g_current_lex_unit);
-      if (g_current_lex_unit.lu_type != test_module_3_pogo_lex_types[lex_unit_n]) {
+      if (g_current_lex_unit.l_type != test_module_3_pogo_lex_types[lex_unit_n]) {
         printf("%d:%d. Incorrect lex unit scanned.  Got: %s, expected %s\n",
-               g_current_lex_unit.lu_line_n, g_current_lex_unit.lu_column_n,
-               g_lex_names[g_current_lex_unit.lu_type],
+               g_current_lex_unit.l_line_n, g_current_lex_unit.l_column_n,
+               g_lex_names[g_current_lex_unit.l_type],
                g_lex_names[test_module_3_pogo_lex_types[lex_unit_n]]);
+        fclose(fr.f_file);
         exit(0);
       }
       lex_unit_n += 1;
-    } while (LX_EOF != g_current_lex_unit.lu_type);
+    } while (LX_EOF != g_current_lex_unit.l_type);
     printf("All lexical units match what was expected.\n");
+    fclose(fr.f_file);
+  }
+}
+
+void test_parse(char *const filename)
+{
+  FILE_READ fr;
+  if (NULL == (fr.f_file = fopen(filename, "r"))) {
+    fprintf(stderr, "%s : not found\n", filename);
+  } else {
+    lex_set_input_function(file_input, &fr);
+    PARSE_NODE *p_node;
+    if (NULL != (p_node = parse())) {
+      parse_print_tree(p_node);
+    }
+    fclose(fr.f_file);
   }
 }
 
@@ -206,15 +223,32 @@ void test_mem_read(void)
   }
 }
 
-enum { S_TEST_FILE_READ, S_TEST_MEM_READ, S_TEST_LEX };
+enum {
+  S_HELP,
+  S_TEST_FILE_READ,
+  S_TEST_MEM_READ,
+  S_TEST_LEX,
+  S_TEST_PARSE
+};
 
 SWITCH g_lex_test_switches[] = {
-//  s_switch_id       s_long_name         s_short_name     s_max_parameters    s_allow_dashed_parmameters
-  { S_TEST_FILE_READ, "--file-read-test", "-f",            1,                  false },
-  { S_TEST_MEM_READ,  "--mem-read-test",  "-m",            0,                  false },
-  { S_TEST_LEX,       "--lex-test",       "-l",            1,                  false },
+//  s_switch_id       s_long_name         s_short_name s_max_parameters s_allow_dashed_parmameters
+  { S_HELP,           "--help",           "-h",        0,               false },
+  { S_TEST_FILE_READ, "--file-read-test", "-f",        1,               false },
+  { S_TEST_MEM_READ,  "--mem-read-test",  "-m",        0,               false },
+  { S_TEST_LEX,       "--lex-test",       "-l",        1,               false },
+  { S_TEST_PARSE,     "--parse-test",     "-p",        1,               false },
   SWITCH_LIST_END
 };
+
+void help(void)
+{
+  fprintf(stderr, "--help | -h\nThis help message.\n");
+  fprintf(stderr, "(--file-read-test | -f) file\nTest generic read on file.\n");
+  fprintf(stderr, "--mem-read-test | -m)\nTest generic read on predefined string.\n");
+  fprintf(stderr, "(--lex-test | -l) file\nCompare file lexical units against predefined array.\n");
+  fprintf(stderr, "(--parse-test | -p) file\nParse file.  Write parse tree outline (in org format).\n");
+}
 
 int main(int argc, char **argv)
 {
@@ -233,7 +267,7 @@ int main(int argc, char **argv)
         switch (switch_id) {
           case S_TEST_FILE_READ:
             if (n_params != 1) {
-              fprintf(stderr, "Usage: mp -f <filename>\n");
+              fprintf(stderr, "Usage: mp -f file\n");
             } else {
               test_file_read(switch_params[0]);
             }
@@ -243,11 +277,17 @@ int main(int argc, char **argv)
             break;
           case S_TEST_LEX:
             if (n_params != 1) {
-              fprintf(stderr, "Usage: mp -l <filename>\n");
+              fprintf(stderr, "Usage: mp -l file\n");
             } else {
               test_lex(switch_params[0]);
             }
             break;
+          case S_TEST_PARSE:
+            if (n_params != 1) {
+              fprintf(stderr, "Usage: mp -p file\n");
+            } else {
+              test_parse(switch_params[0]);
+            }
           default:
             break;
         }

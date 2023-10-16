@@ -7,16 +7,16 @@ enum LEX_TYPES {
 };
 
 typedef struct LEXICAL_UNIT {
-  uint32_t lu_line_n;
-  uint32_t lu_column_n;
-  uint8_t lu_type;
+  uint32_t l_line_n;
+  uint32_t l_column_n;
+  uint8_t l_type;
   union {
     // LX_CHAR scanned.
-    char lu_char;
+    char l_char;
     // LX_IDENTIFIER or LX_.._KW scanned.
-    char lu_name[MAX_STR + 1];
+    char l_name[MAX_STR + 1];
     // LX_NUMBER scanned.
-    int32_t lu_number;
+    int32_t l_number;
   };
 } LEXICAL_UNIT;
 
@@ -26,6 +26,6 @@ void lex_set_input_function(INPUT_FUNCTION input_function, void *data);
 bool lex_is_keyword(uint8_t lex_type);
 bool lex_is_symbol(uint8_t lex_type);
 void lex_print(LEXICAL_UNIT *p_lex);
-int32_t lex_scan(void);
+bool lex_scan(void);
 // Included for testing.
 char lex_get_char(bool peek_char);

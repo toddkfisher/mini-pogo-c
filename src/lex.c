@@ -61,13 +61,13 @@ bool lex_is_symbol(uint8_t lex_type)
 
 void lex_print(LEXICAL_UNIT *p_lex)
 {
-  printf("%s", g_lex_names[p_lex->lu_type]);
-  switch (p_lex->lu_type) {
+  printf("%s", g_lex_names[p_lex->l_type]);
+  switch (p_lex->l_type) {
     case LX_IDENTIFIER:
-      printf(" %s\n", p_lex->lu_name);
+      printf(" %s\n", p_lex->l_name);
       break;
     case LX_NUMBER:
-      printf(" %d\n", p_lex->lu_number);
+      printf(" %d\n", p_lex->l_number);
       break;
     default:
       printf("\n");
@@ -139,27 +139,27 @@ static struct
 
 static bool lex_scan_identifier_or_keyword(void)
 {
-  // Index into lu_name or keyword_to_type_table.
+  // Index into l_name or keyword_to_type_table.
   uint32_t i;
   // String compare result when searching for keyword.
   int scmp;
-  char *lu_name = &g_current_lex_unit.lu_name[0];
+  char *l_name = &g_current_lex_unit.l_name[0];
   char ch = lex_get_char(true);
   i = 0;
   do {
-    lu_name[i++ % MAX_STR] = ch;
+    l_name[i++ % MAX_STR] = ch;
     ch = lex_get_char(false);
   } while ('_' == ch || isalnum(ch));
-  lu_name[i % MAX_STR] = '\0';
+  l_name[i % MAX_STR] = '\0';
   i = 0;
   while (keyword_to_type_table[i].kw_name[0] != '\0' &&
-         (scmp = strcmp(keyword_to_type_table[i].kw_name, lu_name)) < 0) {
+         (scmp = strcmp(keyword_to_type_table[i].kw_name, l_name)) < 0) {
     i += 1;
   }
   if ('\0' != keyword_to_type_table[i].kw_name[0] && 0 == scmp) {
-    g_current_lex_unit.lu_type = keyword_to_type_table[i].kw_type;
+    g_current_lex_unit.l_type = keyword_to_type_table[i].kw_type;
   } else {
-    g_current_lex_unit.lu_type = LX_IDENTIFIER;
+    g_current_lex_unit.l_type = LX_IDENTIFIER;
   }
   return true;
 }
@@ -172,21 +172,21 @@ static bool lex_scan_number(void)
     // Skip over digit
     lex_get_char(false);
   }
-  g_current_lex_unit.lu_type = LX_NUMBER;
-  g_current_lex_unit.lu_number = n;
+  g_current_lex_unit.l_type = LX_NUMBER;
+  g_current_lex_unit.l_number = n;
   return true;
 }
 
 static bool lex_scan_symbol(void)
 {
   bool retval = true;
-  uint8_t lu_type = LX_ERROR;
+  uint8_t l_type = LX_ERROR;
   char ch = lex_get_char(true);
   lex_get_char(false);
   switch (ch) {
     case ':':
       if ('=' == lex_get_char(true)) {
-        lu_type = LX_ASSIGN_SYM;
+        l_type = LX_ASSIGN_SYM;
         // Skip '='
         lex_get_char(false);
       } else {
@@ -194,53 +194,53 @@ static bool lex_scan_symbol(void)
       }
       break;
     case '=':
-      lu_type = LX_EQ_SYM;
+      l_type = LX_EQ_SYM;
       break;
     case '>':
       if ('=' == lex_get_char(true)) {
-        lu_type = LX_GE_SYM;
+        l_type = LX_GE_SYM;
         // Skip '='
         lex_get_char(false);
       } else {
-        lu_type = LX_GT_SYM;
+        l_type = LX_GT_SYM;
       }
       break;
     case '<':
       if ('=' == lex_get_char(true)) {
-        lu_type = LX_LE_SYM;
+        l_type = LX_LE_SYM;
         // Skip '='
         lex_get_char(false);
       } else {
-        lu_type = LX_LT_SYM;
+        l_type = LX_LT_SYM;
       }
       break;
     case '(':
-      lu_type = LX_LPAREN_SYM;
+      l_type = LX_LPAREN_SYM;
       break;
     case ')':
-      lu_type = LX_RPAREN_SYM;
+      l_type = LX_RPAREN_SYM;
       break;
     case ';':
-      lu_type = LX_SEMICOLON_SYM;
+      l_type = LX_SEMICOLON_SYM;
       break;
     case '*':
-      lu_type = LX_TIMES_SYM;
+      l_type = LX_TIMES_SYM;
       break;
     case '/':
-      lu_type = LX_DIVIDE_SYM;
+      l_type = LX_DIVIDE_SYM;
       break;
     case '+':
-      lu_type = LX_PLUS_SYM;
+      l_type = LX_PLUS_SYM;
       break;
     case '-':
-      lu_type = LX_MINUS_SYM;
+      l_type = LX_MINUS_SYM;
       break;
     default:
-      lu_type = LX_ERROR;
+      l_type = LX_ERROR;
       retval = false;
       break;
   }
-  g_current_lex_unit.lu_type = lu_type;
+  g_current_lex_unit.l_type = l_type;
   return retval;
 }
 
@@ -248,11 +248,11 @@ bool lex_scan(void) {
   char ch;
   bool retval = true;
   lex_skip_whitespace();
-  g_current_lex_unit.lu_line_n = g_input_line_n;
-  g_current_lex_unit.lu_column_n = g_input_column_n - 1   ;
+  g_current_lex_unit.l_line_n = g_input_line_n;
+  g_current_lex_unit.l_column_n = g_input_column_n - 1   ;
   ch = lex_get_char(true);
   if (EOF == ch) {
-    retval = g_current_lex_unit.lu_type = LX_EOF;
+    retval = g_current_lex_unit.l_type = LX_EOF;
   } else if (isalpha(ch)) {
     retval = lex_scan_identifier_or_keyword();
   } else if (isdigit(ch)) {
@@ -260,7 +260,7 @@ bool lex_scan(void) {
   } else if (ispunct(ch)) {
     retval = lex_scan_symbol();
   } else {
-    g_current_lex_unit.lu_type = LX_ERROR;
+    g_current_lex_unit.l_type = LX_ERROR;
     retval = false;
   }
   return retval;
