@@ -109,9 +109,15 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         break;
       case ND_MULTIPLY:
       case ND_DIVIDE:
+      case ND_ADD:
+      case ND_SUBTRACT:
         printf("\n");
-        parse_print_tree(indent_level + 1, p_tree->nd_left_expr);
-        parse_print_tree(indent_level + 1, p_tree->nd_right_expr);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_left_expr);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_right_expr);
+        break;
+      case ND_NEGATE:
+        printf("\n");
+        parse_print_tree(indent_level + 1, p_tree->nd_p_expr);
         break;
     }
   }
@@ -152,7 +158,7 @@ static PARSE_NODE *parse_variable_name(void)
 }
 
 // factor = variable-name | number | '(' expression ')'
-PARSE_NODE *parse_factor(void)
+static PARSE_NODE *parse_factor(void)
 {
   PARSE_NODE *retval = NULL;
   switch (g_current_lex_unit.l_type) {
@@ -173,11 +179,7 @@ PARSE_NODE *parse_factor(void)
 }
 
 // term = factor (multiplicative-operator factor)*
-//
-// The operators are turned "inside out" so that something like "4*5/3" is parsed as
-// '(/ (* 4 5) 3) which is correct for integer arithmetic as opposed to (* 4 (/ 5 3)) which
-// will give the wrong result for integers.
-PARSE_NODE *parse_term(void)
+static PARSE_NODE *parse_term(void)
 {
   PARSE_NODE *retval = parse_factor();
   PARSE_NODE *new_root = NULL;
@@ -187,8 +189,39 @@ PARSE_NODE *parse_term(void)
     lex_scan();  // Skip past '*' or '/'.
     new_root = MALLOC_1(PARSE_NODE);
     new_root->nd_type = operator;
-    new_root->nd_left_expr = retval;
-    new_root->nd_right_expr = parse_factor();
+    new_root->nd_p_left_expr = retval;
+    new_root->nd_p_right_expr = parse_factor();
+    retval = new_root;
+  }
+  return retval;
+}
+
+
+// expression = ['+'|'-'] term (addition-operator term)*
+static PARSE_NODE *parse_expression(void)
+{
+  PARSE_NODE *retval = NULL;
+  PARSE_NODE *new_root = NULL;
+  uint8_t operator;              // addition operator ('+' | '-').
+  int32_t sign_of_1st_term = 1;  // Is 1st term negated?
+  while (LX_MINUS_SYM == g_current_lex_unit.l_type || LX_PLUS_SYM == g_current_lex_unit.l_type) {
+    sign_of_1st_term *= LX_MINUS_SYM == g_current_lex_unit.l_type ? -1 : 1;
+    lex_scan();  // Skip over '-' | '+'
+  }
+  retval = parse_term();
+  while (LX_PLUS_SYM == g_current_lex_unit.l_type || LX_MINUS_SYM == g_current_lex_unit.l_type) {
+    operator = LX_PLUS_SYM == g_current_lex_unit.l_type ? ND_ADD : ND_SUBTRACT;
+    lex_scan();  // Skip past '+' or '-'.
+    new_root = MALLOC_1(PARSE_NODE);
+    new_root->nd_type = operator;
+    new_root->nd_p_left_expr = retval;
+    new_root->nd_p_right_expr = parse_term();
+    retval = new_root;
+  }
+  if (sign_of_1st_term < 0) {
+    new_root = MALLOC_1(PARSE_NODE);
+    new_root->nd_type = ND_NEGATE;
+    new_root->nd_p_expr = retval;
     retval = new_root;
   }
   return retval;
@@ -198,7 +231,7 @@ PARSE_NODE *parse(void)
 {
   PARSE_NODE *retval;
   lex_scan(); // Get first lexical unit to start things going.
-  retval = parse_term();
+  retval = parse_expression();
   parse_expect(LX_EOF, false);
   return retval;
 }

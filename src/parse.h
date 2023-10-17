@@ -57,8 +57,8 @@ struct PARSE_NODE {
     // ND_LE, ND_LT, ND_GE, ND_GT, ND_EQ, ND_NE
     // ND_ADD, ND_SUBTRACT, ND_MULTIPLY, ND_DIVIDE
     struct {
-      PARSE_NODE *nd_left_expr;
-      PARSE_NODE *nd_right_expr;
+      PARSE_NODE *nd_p_left_expr;
+      PARSE_NODE *nd_p_right_expr;
     };
     // ND_NUMBER
     int32_t nd_number;
