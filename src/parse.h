@@ -67,4 +67,4 @@ struct PARSE_NODE {
 };
 
 PARSE_NODE *parse(void);
-void parse_print_tree(PARSE_NODE *const p_tree);
+void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree);

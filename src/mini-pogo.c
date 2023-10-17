@@ -149,7 +149,7 @@ void test_parse(char *const filename)
     lex_set_input_function(file_input, &fr);
     PARSE_NODE *p_node;
     if (NULL != (p_node = parse())) {
-      parse_print_tree(p_node);
+      parse_print_tree(1, p_node);
     }
     fclose(fr.f_file);
   }

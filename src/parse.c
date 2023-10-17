@@ -89,16 +89,29 @@ char *g_parse_node_names[] = {
 #include "parse-node-enum.txt"
 };
 
-void parse_print_tree(PARSE_NODE *const p_tree)
+#define N_SPACES_INDENT 1
+
+void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
 {
+  for (uint32_t i = 0; i < indent_level; ++i) {
+    for (uint32_t j = 0; j < N_SPACES_INDENT; ++j) {
+      printf("*");
+    }
+  }
   if (NULL != p_tree) {
-    printf("%s: ", g_parse_node_names[p_tree->nd_type]);
+    printf(" %s: ", g_parse_node_names[p_tree->nd_type]);
     switch (p_tree->nd_type) {
       case ND_NUMBER:
         printf("%d\n", p_tree->nd_number);
         break;
       case ND_VARIABLE:
         printf("%c\n", p_tree->nd_var_name);
+        break;
+      case ND_MULTIPLY:
+      case ND_DIVIDE:
+        printf("\n");
+        parse_print_tree(indent_level + 1, p_tree->nd_left_expr);
+        parse_print_tree(indent_level + 1, p_tree->nd_right_expr);
         break;
     }
   }
@@ -159,11 +172,33 @@ PARSE_NODE *parse_factor(void)
   return retval;
 }
 
+// term = factor (multiplicative-operator factor)*
+//
+// The operators are turned "inside out" so that something like "4*5/3" is parsed as
+// '(/ (* 4 5) 3) which is correct for integer arithmetic as opposed to (* 4 (/ 5 3)) which
+// will give the wrong result for integers.
+PARSE_NODE *parse_term(void)
+{
+  PARSE_NODE *retval = parse_factor();
+  PARSE_NODE *new_root = NULL;
+  uint8_t operator;
+  while (LX_TIMES_SYM == g_current_lex_unit.l_type || LX_DIVIDE_SYM == g_current_lex_unit.l_type) {
+    operator = LX_TIMES_SYM == g_current_lex_unit.l_type ? ND_MULTIPLY : ND_DIVIDE;
+    lex_scan();  // Skip past '*' or '/'.
+    new_root = MALLOC_1(PARSE_NODE);
+    new_root->nd_type = operator;
+    new_root->nd_left_expr = retval;
+    new_root->nd_right_expr = parse_factor();
+    retval = new_root;
+  }
+  return retval;
+}
+
 PARSE_NODE *parse(void)
 {
   PARSE_NODE *retval;
   lex_scan(); // Get first lexical unit to start things going.
-  retval = parse_factor();
+  retval = parse_term();
   parse_expect(LX_EOF, false);
   return retval;
 }
