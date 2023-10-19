@@ -146,11 +146,14 @@ static bool lex_scan_identifier_or_keyword(void)
   char *l_name = &g_current_lex_unit.l_name[0];
   char ch = lex_get_char(true);
   i = 0;
+  zero_mem(l_name, MAX_STR);
   do {
-    l_name[i++ % MAX_STR] = ch;
+    if (i < MAX_STR - 1) {
+      l_name[i] = ch;
+    }
+    i += 1;
     ch = lex_get_char(false);
   } while ('_' == ch || isalnum(ch));
-  l_name[i % MAX_STR] = '\0';
   i = 0;
   while (keyword_to_type_table[i].kw_name[0] != '\0' &&
          (scmp = strcmp(keyword_to_type_table[i].kw_name, l_name)) < 0) {

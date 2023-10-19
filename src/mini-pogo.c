@@ -124,7 +124,6 @@ void test_lex(char *const filename)
     lex_set_input_function(file_input, &fr);
     do {
       lex_scan();
-      //lex_print(&g_current_lex_unit);
       if (g_current_lex_unit.l_type != test_module_3_pogo_lex_types[lex_unit_n]) {
         printf("%d:%d. Incorrect lex unit scanned.  Got: %s, expected %s\n",
                g_current_lex_unit.l_line_n, g_current_lex_unit.l_column_n,
@@ -140,12 +139,28 @@ void test_lex(char *const filename)
   }
 }
 
+void scan_file_and_print(char *const filename)
+{
+  FILE_READ fr;
+  if (NULL == (fr.f_file = fopen(filename, "r"))) {
+    fprintf(stderr, "%s : not found\n", filename);
+  } else {
+    fr.f_first_read_occured = false;
+    lex_set_input_function(file_input, &fr);
+    do {
+      lex_scan();
+      lex_print(&g_current_lex_unit);
+    } while (LX_EOF != g_current_lex_unit.l_type && LX_ERROR != g_current_lex_unit.l_type);
+  }
+}
+
 void test_parse(char *const filename)
 {
   FILE_READ fr;
   if (NULL == (fr.f_file = fopen(filename, "r"))) {
     fprintf(stderr, "%s : not found\n", filename);
   } else {
+    fr.f_first_read_occured = false;
     lex_set_input_function(file_input, &fr);
     PARSE_NODE *p_node;
     if (NULL != (p_node = parse())) {
@@ -228,6 +243,7 @@ enum {
   S_TEST_FILE_READ,
   S_TEST_MEM_READ,
   S_TEST_LEX,
+  S_LEX_PRINT,
   S_TEST_PARSE
 };
 
@@ -237,6 +253,7 @@ SWITCH g_lex_test_switches[] = {
   { S_TEST_FILE_READ, "--file-read-test", "-f",        1,               false },
   { S_TEST_MEM_READ,  "--mem-read-test",  "-m",        0,               false },
   { S_TEST_LEX,       "--lex-test",       "-l",        1,               false },
+  { S_LEX_PRINT,      "--lex-print",      "",          1,               false },
   { S_TEST_PARSE,     "--parse-test",     "-p",        1,               false },
   SWITCH_LIST_END
 };
@@ -247,6 +264,7 @@ void help(void)
   fprintf(stderr, "(--file-read-test | -f) file\nTest generic read on file.\n");
   fprintf(stderr, "--mem-read-test | -m)\nTest generic read on predefined string.\n");
   fprintf(stderr, "(--lex-test | -l) file\nCompare file lexical units against predefined array.\n");
+  fprintf(stderr, "--lex-print file\nPrint internal representation of each lexical unit scanned from file.\n");
   fprintf(stderr, "(--parse-test | -p) file\nParse file.  Write parse tree outline (in org format).\n");
 }
 
@@ -288,6 +306,13 @@ int main(int argc, char **argv)
             } else {
               test_parse(switch_params[0]);
             }
+            break;
+          case S_LEX_PRINT:
+            scan_file_and_print(switch_params[0]);
+            break;
+          case S_HELP:
+            help();
+            break;
           default:
             break;
         }

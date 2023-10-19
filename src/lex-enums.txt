@@ -21,12 +21,14 @@
   // go between LX_SYMBOL_BEGIN/END
   ENUM(LX_SYMBOL_BEGIN),
     ENUM(LX_ASSIGN_SYM),    // ":="
-    ENUM(LX_EQ_SYM),        // "="
-    ENUM(LX_NE_SYM),        // "!="
-    ENUM(LX_GE_SYM),        // ">="
-    ENUM(LX_GT_SYM),        // ">"
-    ENUM(LX_LT_SYM),        // "<"
-    ENUM(LX_LE_SYM),        // "<="
+    ENUM(LX_COMPARISON_SYMBOL_BEGIN),
+      ENUM(LX_EQ_SYM),        // "="
+      ENUM(LX_NE_SYM),        // "!="
+      ENUM(LX_GE_SYM),        // ">="
+      ENUM(LX_GT_SYM),        // ">"
+      ENUM(LX_LT_SYM),        // "<"
+      ENUM(LX_LE_SYM),        // "<="
+    ENUM(LX_COMPARISON_SYMBOL_END),
     ENUM(LX_LPAREN_SYM),    // "("
     ENUM(LX_RPAREN_SYM),    // ")"
     ENUM(LX_PLUS_SYM),      // "+"
