@@ -177,7 +177,7 @@ static void parse_expect(uint8_t lx_type_expected,
 static PARSE_NODE *parse_number(void)
 {
   PARSE_NODE *retval = NULL;
-  retval = MALLOC_1(PARSE_NODE);
+  retval = malloc(sizeof(PARSE_NODE));
   retval->nd_type = ND_NUMBER;
   retval->nd_number = g_current_lex_unit.l_number;
   lex_scan();  // Skip over numeric constant.
@@ -187,7 +187,7 @@ static PARSE_NODE *parse_number(void)
 static PARSE_NODE *parse_variable_name(void)
 {
   PARSE_NODE *retval = NULL;
-  retval = MALLOC_1(PARSE_NODE);
+  retval = malloc(sizeof(PARSE_NODE));
   retval->nd_type = ND_VARIABLE;
   retval->nd_var_name = toupper(g_current_lex_unit.l_name[0]);  // Variable names are one character long.
   lex_scan();  // Skip over variable name.
@@ -231,7 +231,7 @@ static PARSE_NODE *parse_term(void)
   while (LX_TIMES_SYM == g_current_lex_unit.l_type || LX_DIVIDE_SYM == g_current_lex_unit.l_type) {
     operator = LX_TIMES_SYM == g_current_lex_unit.l_type ? ND_MULTIPLY : ND_DIVIDE;
     lex_scan();  // Skip past '*' or '/'.
-    p_new_root = MALLOC_1(PARSE_NODE);
+    p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = operator;
     p_new_root->nd_p_left_expr = retval;
     p_new_root->nd_p_right_expr = parse_factor();
@@ -255,7 +255,7 @@ static PARSE_NODE *parse_expression(void)
   }
   retval = parse_term();
   if (sign_of_1st_term < 0) {
-    p_negation = MALLOC_1(PARSE_NODE);
+    p_negation = malloc(sizeof(PARSE_NODE));
     p_negation->nd_type = ND_NEGATE;
     p_negation->nd_p_expr = retval;
     retval = p_negation;
@@ -263,7 +263,7 @@ static PARSE_NODE *parse_expression(void)
   while (LX_PLUS_SYM == g_current_lex_unit.l_type || LX_MINUS_SYM == g_current_lex_unit.l_type) {
     operator = LX_PLUS_SYM == g_current_lex_unit.l_type ? ND_ADD : ND_SUBTRACT;
     lex_scan();  // Skip past '+' or '-'.
-    p_new_root = MALLOC_1(PARSE_NODE);
+    p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = operator;
     p_new_root->nd_p_left_expr = retval;
     p_new_root->nd_p_right_expr = parse_term();
@@ -284,7 +284,7 @@ PARSE_NODE *parse_comparison_expression(void)
   PARSE_NODE *retval = parse_expression();
   PARSE_NODE *p_new_root = NULL;
   if (parse_is_comparison_operator(g_current_lex_unit.l_type)) {
-    p_new_root = MALLOC_1(PARSE_NODE);
+    p_new_root = malloc(sizeof(PARSE_NODE));
     switch (g_current_lex_unit.l_type) {
       case LX_EQ_SYM:
         p_new_root->nd_type = ND_EQ;
@@ -326,14 +326,14 @@ PARSE_NODE *parse_and_expression(void)
   }
   retval =  parse_comparison_expression();
   if (has_leading_not_kw) {
-    p_negation = MALLOC_1(PARSE_NODE);
+    p_negation = malloc(sizeof(PARSE_NODE));
     p_negation->nd_type = ND_NOT;
     p_negation->nd_p_expr = retval;
     retval = p_negation;
   }
   while (LX_AND_KW == g_current_lex_unit.l_type) {
     lex_scan();  // Skip past 'and'.
-    p_new_root = MALLOC_1(PARSE_NODE);
+    p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = ND_AND;
     p_new_root->nd_p_left_expr = retval;
     p_new_root->nd_p_right_expr = parse_comparison_expression();
@@ -350,7 +350,7 @@ PARSE_NODE *parse_or_expression(void)
   retval =  parse_and_expression();
   while (LX_OR_KW == g_current_lex_unit.l_type) {
     lex_scan();  // Skip past 'or'.
-    p_new_root = MALLOC_1(PARSE_NODE);
+    p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = ND_OR;
     p_new_root->nd_p_left_expr = retval;
     p_new_root->nd_p_right_expr = parse_and_expression();
@@ -362,7 +362,7 @@ PARSE_NODE *parse_or_expression(void)
 // assignment-statement = variable-name ':=' or-expression
 PARSE_NODE *parse_assignment(void)
 {
-  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
   result->nd_type = ND_ASSIGN;
   result->nd_var_name = toupper(g_current_lex_unit.l_name[0]);
   lex_scan();  // Skip over variable name.
@@ -376,7 +376,7 @@ PARSE_NODE *parse_statement(void);
 // statement-sequence = (statement ';')*
 PARSE_NODE *parse_statement_sequence(void)
 {
-  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
   LISTITEM *p_statement = NULL;
   LISTITEM *p_prev_statement = NULL;
   result->nd_type = ND_STATEMENT_SEQUENCE;
@@ -389,7 +389,7 @@ PARSE_NODE *parse_statement_sequence(void)
   //   x := 666;
   // end
   while (LX_ELSE_KW != g_current_lex_unit.l_type && LX_END_KW != g_current_lex_unit.l_type) {
-    p_statement = MALLOC_1(LISTITEM);
+    p_statement = malloc(sizeof(LISTITEM));
     p_statement->l_p_next = NULL;
     p_statement->l_parse_node = parse_statement();
     parse_expect(LX_SEMICOLON_SYM, true);
@@ -407,7 +407,7 @@ PARSE_NODE *parse_statement_sequence(void)
 //                 ['else' statement-sequence] 'end'
 PARSE_NODE *parse_if(void)
 {
-  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
   lex_scan();  // Skip over 'if'
   result->nd_type = ND_IF;
   result->nd_p_if_test_expr = parse_or_expression();
