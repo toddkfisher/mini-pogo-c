@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <signal.h>
 #include <util.h>
 
 #include "parse.h"
@@ -91,14 +92,19 @@ char *g_parse_node_names[] = {
 
 #define N_SPACES_INDENT 1
 
-void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
+void parse_print_indent(uint32_t indent_level, char indent_char)
 {
   for (uint32_t i = 0; i < indent_level; ++i) {
     for (uint32_t j = 0; j < N_SPACES_INDENT; ++j) {
-      printf("*");
+      putchar(indent_char);
     }
   }
+}
+
+void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
+{
   if (NULL != p_tree) {
+    parse_print_indent(indent_level, '*');
     printf(" %s: ", g_parse_node_names[p_tree->nd_type]);
     switch (p_tree->nd_type) {
       case ND_NUMBER:
@@ -128,8 +134,26 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         printf("\n");
         parse_print_tree(indent_level + 1, p_tree->nd_p_expr);
         break;
+      case ND_ASSIGN:
+        printf("%c\n", p_tree->nd_var_name);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_assign_expr);
+        break;
+      case ND_STATEMENT_SEQUENCE:
+        printf("\n");
+        for (LISTITEM *p_statement = p_tree->nd_p_statement_seq;
+             NULL != p_statement;
+             p_statement = p_statement->l_p_next) {
+          parse_print_tree(indent_level + 1, p_statement->l_parse_node);
+        }
+        break;
+      case ND_IF:
+        printf("\n");
+        parse_print_tree(indent_level + 1, p_tree->nd_p_if_test_expr);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_true_branch_statement_seq);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_false_branch_statement_seq);
+        break;
       default:
-        printf("???\n");
+        printf("Unhandled node type in parse_print()\n");
         break;
     }
   }
@@ -143,6 +167,7 @@ static void parse_expect(uint8_t lx_type_expected,
     fprintf(stderr, "%d:%d : Unexpected lexical unit.\n",
             g_input_line_n, g_input_column_n);
     lex_print(&g_current_lex_unit);
+    fprintf(stderr, "%s expected.\n", g_lex_names[lx_type_expected]);
     exit(0);
   } else {
     lex_scan();
@@ -334,11 +359,115 @@ PARSE_NODE *parse_or_expression(void)
   return retval;
 }
 
+// assignment-statement = variable-name ':=' or-expression
+PARSE_NODE *parse_assignment(void)
+{
+  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  result->nd_type = ND_ASSIGN;
+  result->nd_var_name = toupper(g_current_lex_unit.l_name[0]);
+  lex_scan();  // Skip over variable name.
+  parse_expect(LX_ASSIGN_SYM, true);
+  result->nd_p_assign_expr = parse_or_expression();
+  return result;
+}
+
+PARSE_NODE *parse_statement(void);
+
+// statement-sequence = (statement ';')*
+PARSE_NODE *parse_statement_sequence(void)
+{
+  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  LISTITEM *p_statement = NULL;
+  LISTITEM *p_prev_statement = NULL;
+  result->nd_type = ND_STATEMENT_SEQUENCE;
+  result->nd_p_statement_seq = NULL;
+  // If current lex unit is a follower of statment-squence then we have
+  // zero instances of statement.  Example:
+  // if p then
+  //   ! empty statement-sequence.
+  // else
+  //   x := 666;
+  // end
+  while (LX_ELSE_KW != g_current_lex_unit.l_type && LX_END_KW != g_current_lex_unit.l_type) {
+    p_statement = MALLOC_1(LISTITEM);
+    p_statement->l_p_next = NULL;
+    p_statement->l_parse_node = parse_statement();
+    parse_expect(LX_SEMICOLON_SYM, true);
+    if (NULL == result->nd_p_statement_seq) {
+      result->nd_p_statement_seq = p_statement;
+    } else {
+      p_prev_statement->l_p_next = p_statement; // test commend
+    }
+    p_prev_statement = p_statement;
+  }
+  return result;
+}
+
+// if-statement = 'if' expression 'then' statement-sequence
+//                 ['else' statement-sequence] 'end'
+PARSE_NODE *parse_if(void)
+{
+  PARSE_NODE *result = MALLOC_1(PARSE_NODE);
+  lex_scan();  // Skip over 'if'
+  result->nd_type = ND_IF;
+  result->nd_p_if_test_expr = parse_or_expression();
+  parse_expect(LX_THEN_KW, true);
+  result->nd_p_true_branch_statement_seq = parse_statement_sequence();
+  if (LX_ELSE_KW == g_current_lex_unit.l_type) {
+    lex_scan();  // Skip over 'else'
+    result->nd_p_false_branch_statement_seq = parse_statement_sequence();
+  } else {
+    result->nd_p_false_branch_statement_seq = NULL;
+  }
+  parse_expect(LX_END_KW, true);
+  return result;
+}
+
+// statement =
+//             assignment-statement
+//           | if-statement
+//           | while-statement
+//           | stop-statement
+//           | spawn-statement
+//           | print-int-statement
+//           | print-char-statement
+PARSE_NODE *parse_statement(void)
+{
+  PARSE_NODE *result = NULL;
+  switch (g_current_lex_unit.l_type) {
+    case LX_IDENTIFIER:
+      result = parse_assignment();
+      break;
+    case LX_IF_KW:
+      result = parse_if();
+      break;
+/*    LX_WHILE_KW:
+      // result = parse_while();
+      break;
+    LX_STOP_KW:
+      // result = parse_stop();
+      break;
+    LX_SPAWN_KW:
+      // result = parse_spawn();
+      break;
+    LX_PRINT_INT_KW:
+      // result = parse_print_int();
+      break;
+    LX_PRINT_CHAR_KW:
+      // result = parse_print_char();
+      break;
+*/
+    default:
+      break;
+  }
+  return result;
+}
+
 PARSE_NODE *parse(void)
 {
   PARSE_NODE *retval;
   lex_scan(); // Get first lexical unit to start things going.
-  retval = parse_or_expression();
+  retval = parse_statement();
   parse_expect(LX_EOF, false);
   return retval;
 }

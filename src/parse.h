@@ -29,10 +29,10 @@ struct PARSE_NODE {
     // ND_TASK_DECLARATION
     struct {
       char nd_task_name[MAX_STR];
-      PARSE_NODE *nd_p_statement_seq;
+      PARSE_NODE *nd_p_task_body;
     };
     // ND_STATEMENT_SEQUENCE
-    LISTITEM *nd_p_statement_sequence;
+    LISTITEM *nd_p_statement_seq;
     // ND_ASSIGN
     struct {
       char nd_var_name;
