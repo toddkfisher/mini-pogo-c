@@ -152,6 +152,11 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         parse_print_tree(indent_level + 1, p_tree->nd_p_true_branch_statement_seq);
         parse_print_tree(indent_level + 1, p_tree->nd_p_false_branch_statement_seq);
         break;
+      case ND_WHILE:
+        printf("\n");
+        parse_print_tree(indent_level + 1, p_tree->nd_p_while_test_expr);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_true_branch_statement_seq);
+        break;
       default:
         printf("Unhandled node type in parse_print()\n");
         break;
@@ -408,7 +413,7 @@ PARSE_NODE *parse_statement_sequence(void)
 PARSE_NODE *parse_if(void)
 {
   PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
-  lex_scan();  // Skip over 'if'
+  lex_scan();  // Skip over 'if'.
   result->nd_type = ND_IF;
   result->nd_p_if_test_expr = parse_or_expression();
   parse_expect(LX_THEN_KW, true);
@@ -419,6 +424,18 @@ PARSE_NODE *parse_if(void)
   } else {
     result->nd_p_false_branch_statement_seq = NULL;
   }
+  parse_expect(LX_END_KW, true);
+  return result;
+}
+
+PARSE_NODE *parse_while(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  result->nd_type = ND_WHILE;
+  lex_scan();  // Skip over 'while'.
+  result->nd_p_while_test_expr = parse_or_expression();
+  parse_expect(LX_DO_KW, true);
+  result->nd_p_while_statement_seq = parse_statement_sequence();
   parse_expect(LX_END_KW, true);
   return result;
 }
@@ -441,10 +458,10 @@ PARSE_NODE *parse_statement(void)
     case LX_IF_KW:
       result = parse_if();
       break;
-/*    LX_WHILE_KW:
-      // result = parse_while();
+    case LX_WHILE_KW:
+      result = parse_while();
       break;
-    LX_STOP_KW:
+/*    LX_STOP_KW:
       // result = parse_stop();
       break;
     LX_SPAWN_KW:
