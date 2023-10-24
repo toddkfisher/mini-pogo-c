@@ -49,6 +49,8 @@ LEXICAL_UNIT g_current_lex_unit;
 uint32_t g_input_line_n = 1;
 uint32_t g_input_column_n = 1;
 
+bool g_lex_debug_print = false;   // Print lexical units as they are scanned.
+
 bool lex_is_keyword(uint8_t lex_type)
 {
   return lex_type > LX_KEYWORD_BEGIN && lex_type < LX_KEYWORD_END;
@@ -265,6 +267,9 @@ bool lex_scan(void) {
   } else {
     g_current_lex_unit.l_type = LX_ERROR;
     retval = false;
+  }
+  if (g_lex_debug_print) {
+    lex_print(&g_current_lex_unit);
   }
   return retval;
 }

@@ -84,6 +84,7 @@ extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
+extern bool g_lex_debug_print;
 
 #include <enum-str.h>
 char *g_parse_node_names[] = {
@@ -157,6 +158,15 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         parse_print_tree(indent_level + 1, p_tree->nd_p_while_test_expr);
         parse_print_tree(indent_level + 1, p_tree->nd_p_true_branch_statement_seq);
         break;
+      case ND_SPAWN:
+        for (LISTITEM *p_name = p_tree->nd_p_task_names; NULL != p_name; p_name = p_name->l_p_next) {
+          printf("%s", p_name->l_name);
+          if (NULL != p_name->l_p_next) {
+            printf(", ");
+          }
+        }
+        printf("\n");
+        break;
       default:
         printf("Unhandled node type in parse_print()\n");
         break;
@@ -174,7 +184,7 @@ static void parse_expect(uint8_t lx_type_expected,
     lex_print(&g_current_lex_unit);
     fprintf(stderr, "%s expected.\n", g_lex_names[lx_type_expected]);
     exit(0);
-  } else {
+  } else if (skip_to_next) {
     lex_scan();
   }
 }
@@ -440,6 +450,33 @@ PARSE_NODE *parse_while(void)
   return result;
 }
 
+// spawn-statement = 'spawn' (name ';')+ 'end'
+PARSE_NODE *parse_spawn(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  LISTITEM *p_current_name;
+  LISTITEM *p_prev_name;
+  lex_scan();   // Skip over 'spawn'.
+  result->nd_type = ND_SPAWN;
+  result->nd_p_task_names = NULL;
+  do {
+    parse_expect(LX_IDENTIFIER, false);
+    p_current_name = malloc(sizeof(LISTITEM));
+    p_current_name->l_p_next = NULL;
+    strncpy(p_current_name->l_name, g_current_lex_unit.l_name, MAX_STR - 1);
+    if (NULL == result->nd_p_task_names) {
+      result->nd_p_task_names = p_current_name;
+    } else {
+      p_prev_name->l_p_next = p_current_name;
+    }
+    p_prev_name = p_current_name;
+    lex_scan();  // Skip past name.
+    parse_expect(LX_SEMICOLON_SYM, true);
+  } while (LX_END_KW != g_current_lex_unit.l_type);
+  lex_scan();  // Skip past 'end'.
+  return result;
+}
+
 // statement =
 //             assignment-statement
 //           | if-statement
@@ -461,17 +498,17 @@ PARSE_NODE *parse_statement(void)
     case LX_WHILE_KW:
       result = parse_while();
       break;
-/*    LX_STOP_KW:
-      // result = parse_stop();
+    case LX_SPAWN_KW:
+      result = parse_spawn();
       break;
-    LX_SPAWN_KW:
-      // result = parse_spawn();
+/*  case LX_STOP_KW:
+      result = parse_stop();
       break;
-    LX_PRINT_INT_KW:
-      // result = parse_print_int();
+    case LX_PRINT_INT_KW:
+      result = parse_print_int();
       break;
-    LX_PRINT_CHAR_KW:
-      // result = parse_print_char();
+    case LX_PRINT_CHAR_KW:
+      result = parse_print_char();
       break;
 */
     default:
