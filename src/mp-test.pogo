@@ -2,6 +2,13 @@ if x < 1 then
   while x < 1 do
     x := x + 1;
     y := y + x;
+    'a'
+    'b'
+    'Z'
+    '1'
+    '\''
+    '\\'
+    '\x20'
   end;
 else
   x := 1;
