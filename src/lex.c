@@ -300,8 +300,6 @@ uint8_t lex_x_digit_value(char digit_char)
   return result;
 }
 
-
-
 bool lex_scan_char(void)
 {
   char ch = lex_get_char(false);  // Skip over single quote
