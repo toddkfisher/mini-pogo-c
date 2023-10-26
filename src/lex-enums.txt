@@ -37,7 +37,7 @@
     ENUM(LX_DIVIDE_SYM),    // "/"
     ENUM(LX_SEMICOLON_SYM), // ";"
   ENUM(LX_SYMBOL_END),
-  ENUM(LX_CHAR),          // 'c' or '\xx'
+  ENUM(LX_CHAR),          // 'c' or '\x<hexdigit><hexdigit>' or '\n' or '\t' or '\''
   ENUM(LX_NUMBER),        // digit+
   ENUM(LX_EOF),
   ENUM(LX_IDENTIFIER),    // case insensitive
