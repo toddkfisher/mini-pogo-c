@@ -2,15 +2,18 @@
 
 #include <util.h>
 #include <enum-int.h>
-enum LEX_TYPES {
+enum LEX_TYPES
+{
 #include "lex-enums.txt"
 };
 
-typedef struct LEXICAL_UNIT {
+typedef struct LEXICAL_UNIT
+{
   uint32_t l_line_n;
   uint32_t l_column_n;
   uint8_t l_type;
-  union {
+  union
+  {
     // LX_CHAR scanned.
     char l_char;
     // LX_IDENTIFIER or LX_.._KW scanned.

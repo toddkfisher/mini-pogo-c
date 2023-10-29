@@ -85,6 +85,7 @@ extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
 extern bool g_lex_debug_print;
+extern char *ASCII[];
 
 #include <enum-str.h>
 char *g_parse_node_names[] = {
@@ -95,19 +96,21 @@ char *g_parse_node_names[] = {
 
 void parse_print_indent(uint32_t indent_level, char indent_char)
 {
-  for (uint32_t i = 0; i < indent_level; ++i) {
-    for (uint32_t j = 0; j < N_SPACES_INDENT; ++j) {
+  for (uint32_t i = 0; i < indent_level; ++i)
+  {
+    for (uint32_t j = 0; j < N_SPACES_INDENT; ++j)
       putchar(indent_char);
-    }
   }
 }
 
 void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
 {
-  if (NULL != p_tree) {
+  if (NULL != p_tree)
+  {
     parse_print_indent(indent_level, '*');
     printf(" %s: ", g_parse_node_names[p_tree->nd_type]);
-    switch (p_tree->nd_type) {
+    switch (p_tree->nd_type)
+    {
       case ND_NUMBER:
         printf("%d\n", p_tree->nd_number);
         break;
@@ -143,9 +146,8 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         printf("\n");
         for (LISTITEM *p_statement = p_tree->nd_p_statement_seq;
              NULL != p_statement;
-             p_statement = p_statement->l_p_next) {
+             p_statement = p_statement->l_p_next)
           parse_print_tree(indent_level + 1, p_statement->l_parse_node);
-        }
         break;
       case ND_IF:
         printf("\n");
@@ -159,16 +161,23 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
         parse_print_tree(indent_level + 1, p_tree->nd_p_true_branch_statement_seq);
         break;
       case ND_SPAWN:
-        for (LISTITEM *p_name = p_tree->nd_p_task_names; NULL != p_name; p_name = p_name->l_p_next) {
+        for (LISTITEM *p_name = p_tree->nd_p_task_names; NULL != p_name; p_name = p_name->l_p_next)
+        {
           printf("%s", p_name->l_name);
-          if (NULL != p_name->l_p_next) {
+          if (NULL != p_name->l_p_next)
             printf(", ");
-          }
         }
         printf("\n");
         break;
+      case ND_PRINT_CHAR:
+        printf("%s\n", ASCII[(uint8_t) p_tree->nd_char]);
+        break;
+      case ND_TASK_DECLARATION:
+        printf("%s\n", p_tree->nd_task_name);
+        parse_print_tree(indent_level + 1, p_tree->nd_p_task_body);
+        break;
       default:
-        printf("Unhandled node type in parse_print()\n");
+        printf("Unhandled node type in parse_print_tree()\n");
         break;
     }
   }
@@ -178,15 +187,16 @@ static void parse_expect(uint8_t lx_type_expected,
                          bool const skip_to_next  // Should we skip over the current lex unit to the next?
   )
 {
-  if (lx_type_expected != g_current_lex_unit.l_type) {
+  if (lx_type_expected != g_current_lex_unit.l_type)
+  {
     fprintf(stderr, "%d:%d : Unexpected lexical unit.\n",
             g_input_line_n, g_input_column_n);
     lex_print(&g_current_lex_unit);
     fprintf(stderr, "%s expected.\n", g_lex_names[lx_type_expected]);
     exit(0);
-  } else if (skip_to_next) {
-    lex_scan();
   }
+  else if (skip_to_next)
+    lex_scan();
 }
 
 static PARSE_NODE *parse_number(void)
@@ -215,7 +225,8 @@ static PARSE_NODE *parse_or_expression(void);
 static PARSE_NODE *parse_factor(void)
 {
   PARSE_NODE *retval = NULL;
-  switch (g_current_lex_unit.l_type) {
+  switch (g_current_lex_unit.l_type)
+  {
     case LX_IDENTIFIER:
       retval = parse_variable_name();
       break;
@@ -243,7 +254,8 @@ static PARSE_NODE *parse_term(void)
   PARSE_NODE *retval = parse_factor();
   PARSE_NODE *p_new_root = NULL;
   uint8_t operator;
-  while (LX_TIMES_SYM == g_current_lex_unit.l_type || LX_DIVIDE_SYM == g_current_lex_unit.l_type) {
+  while (LX_TIMES_SYM == g_current_lex_unit.l_type || LX_DIVIDE_SYM == g_current_lex_unit.l_type)
+  {
     operator = LX_TIMES_SYM == g_current_lex_unit.l_type ? ND_MULTIPLY : ND_DIVIDE;
     lex_scan();  // Skip past '*' or '/'.
     p_new_root = malloc(sizeof(PARSE_NODE));
@@ -264,18 +276,23 @@ static PARSE_NODE *parse_expression(void)
   PARSE_NODE *p_negation = NULL;
   uint8_t operator;              // addition operator ('+' | '-').
   int32_t sign_of_1st_term = 1;  // Is 1st term negated?
-  while (LX_MINUS_SYM == g_current_lex_unit.l_type || LX_PLUS_SYM == g_current_lex_unit.l_type) {
+  while (LX_MINUS_SYM == g_current_lex_unit.l_type
+         || LX_PLUS_SYM == g_current_lex_unit.l_type)
+  {
     sign_of_1st_term *= LX_MINUS_SYM == g_current_lex_unit.l_type ? -1 : 1;
     lex_scan();  // Skip over '-' | '+'
   }
   retval = parse_term();
-  if (sign_of_1st_term < 0) {
+  if (sign_of_1st_term < 0)
+  {
     p_negation = malloc(sizeof(PARSE_NODE));
     p_negation->nd_type = ND_NEGATE;
     p_negation->nd_p_expr = retval;
     retval = p_negation;
   }
-  while (LX_PLUS_SYM == g_current_lex_unit.l_type || LX_MINUS_SYM == g_current_lex_unit.l_type) {
+  while (LX_PLUS_SYM == g_current_lex_unit.l_type
+         || LX_MINUS_SYM == g_current_lex_unit.l_type)
+  {
     operator = LX_PLUS_SYM == g_current_lex_unit.l_type ? ND_ADD : ND_SUBTRACT;
     lex_scan();  // Skip past '+' or '-'.
     p_new_root = malloc(sizeof(PARSE_NODE));
@@ -459,14 +476,16 @@ PARSE_NODE *parse_spawn(void)
   lex_scan();   // Skip over 'spawn'.
   result->nd_type = ND_SPAWN;
   result->nd_p_task_names = NULL;
-  do {
+  do
+  {
     parse_expect(LX_IDENTIFIER, false);
     p_current_name = malloc(sizeof(LISTITEM));
     p_current_name->l_p_next = NULL;
     strncpy(p_current_name->l_name, g_current_lex_unit.l_name, MAX_STR - 1);
-    if (NULL == result->nd_p_task_names) {
+    if (NULL == result->nd_p_task_names)
       result->nd_p_task_names = p_current_name;
-    } else {
+    else
+    {
       p_prev_name->l_p_next = p_current_name;
     }
     p_prev_name = p_current_name;
@@ -474,6 +493,27 @@ PARSE_NODE *parse_spawn(void)
     parse_expect(LX_SEMICOLON_SYM, true);
   } while (LX_END_KW != g_current_lex_unit.l_type);
   lex_scan();  // Skip past 'end'.
+  return result;
+}
+
+// print-char-statement = 'print_char' character-constant
+PARSE_NODE *parse_print_char(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  lex_scan();  // Skip past 'print_char'.
+  parse_expect(LX_CHAR, false);
+  result->nd_type = ND_PRINT_CHAR;
+  result->nd_char = g_current_lex_unit.l_char;
+  lex_scan();  // Skip over character constant.
+  return result;
+}
+
+// stop-statement = 'stop'
+PARSE_NODE *parse_stop(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  lex_scan();  // Skip past 'stop'.
+  result->nd_type = ND_STOP;
   return result;
 }
 
@@ -488,7 +528,8 @@ PARSE_NODE *parse_spawn(void)
 PARSE_NODE *parse_statement(void)
 {
   PARSE_NODE *result = NULL;
-  switch (g_current_lex_unit.l_type) {
+  switch (g_current_lex_unit.l_type)
+  {
     case LX_IDENTIFIER:
       result = parse_assignment();
       break;
@@ -501,19 +542,37 @@ PARSE_NODE *parse_statement(void)
     case LX_SPAWN_KW:
       result = parse_spawn();
       break;
-/*  case LX_STOP_KW:
+  case LX_STOP_KW:
       result = parse_stop();
       break;
-    case LX_PRINT_INT_KW:
+/*    case LX_PRINT_INT_KW:
       result = parse_print_int();
       break;
+*/
     case LX_PRINT_CHAR_KW:
       result = parse_print_char();
       break;
-*/
     default:
       break;
   }
+  return result;
+}
+
+// task-declaration = 'task' name [';'] statement-sequence 'end'
+PARSE_NODE *parse_task_declaration(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  result->nd_type = ND_TASK_DECLARATION;
+  lex_scan();  // Skip 'task' keyword.
+  if (LX_SEMICOLON_SYM == g_current_lex_unit.l_type)
+  {
+    lex_scan();  // Skip optional semicolon.
+  }
+  parse_expect(LX_IDENTIFIER, false);
+  strcpy(result->nd_task_name, g_current_lex_unit.l_name);
+  lex_scan();  // Skip name.
+  result->nd_p_task_body = parse_statement_sequence();
+  parse_expect(LX_END_KW, true);
   return result;
 }
 
@@ -521,7 +580,7 @@ PARSE_NODE *parse(void)
 {
   PARSE_NODE *retval;
   lex_scan(); // Get first lexical unit to start things going.
-  retval = parse_statement();
+  retval = parse_task_declaration();
   parse_expect(LX_EOF, false);
   return retval;
 }

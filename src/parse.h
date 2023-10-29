@@ -4,51 +4,63 @@
 #include <util.h>
 
 #include <enum-int.h>
-enum PARSE_NODE_TYPES {
+enum PARSE_NODE_TYPES
+{
 #include "parse-node-enum.txt"
 };
 
 typedef struct PARSE_NODE PARSE_NODE;
 
-typedef struct LISTITEM {
+typedef struct LISTITEM
+{
   struct LISTITEM *l_p_next;
-  union {
+  union
+  {
     PARSE_NODE *l_parse_node;
     char l_name[MAX_STR];
   };
 } LISTITEM;
 
-struct PARSE_NODE {
+struct PARSE_NODE
+{
   uint8_t nd_type;
-  union {
+  union
+  {
     // ND_MODULE
-    struct {
+    struct
+    {
       char nd_module_name[MAX_STR];
       LISTITEM *nd_p_task_decl_list;
     };
     // ND_TASK_DECLARATION
-    struct {
+    struct
+    {
       char nd_task_name[MAX_STR];
       PARSE_NODE *nd_p_task_body;
     };
     // ND_STATEMENT_SEQUENCE
     LISTITEM *nd_p_statement_seq;
     // ND_ASSIGN
-    struct {
+    struct
+    {
       char nd_var_name;
       PARSE_NODE *nd_p_assign_expr;
     };
     // ND_IF
-    struct {
+    struct
+    {
       PARSE_NODE *nd_p_if_test_expr;
       PARSE_NODE *nd_p_true_branch_statement_seq;
       PARSE_NODE *nd_p_false_branch_statement_seq;
     };
     // ND_WHILE
-    struct {
+    struct
+    {
       PARSE_NODE *nd_p_while_test_expr;
       PARSE_NODE *nd_p_while_statement_seq;
     };
+    // ND_PRINT_CHAR
+    char nd_char;
     // ND_PRINT_INT, ND_NOT, ND_NEGATE
     PARSE_NODE *nd_p_expr;
     // ND_SPAWN
@@ -56,7 +68,8 @@ struct PARSE_NODE {
     // ND_OR, ND_AND
     // ND_LE, ND_LT, ND_GE, ND_GT, ND_EQ, ND_NE
     // ND_ADD, ND_SUBTRACT, ND_MULTIPLY, ND_DIVIDE
-    struct {
+    struct
+    {
       PARSE_NODE *nd_p_left_expr;
       PARSE_NODE *nd_p_right_expr;
     };

@@ -129,10 +129,13 @@ char lex_get_char(bool peek_char)
   char ch = (*g_lex_input_function)(g_input_data, peek_char);
   if (!peek_char)
   {
-    if ('\n' == ch) {
+    if ('\n' == ch)
+    {
       g_input_line_n += 1;
       g_input_column_n = 1;
-    } else {
+    }
+    else
+    {
       g_input_column_n += 1;
     }
   }
@@ -188,8 +191,10 @@ static bool lex_scan_identifier_or_keyword(void)
   char ch = lex_get_char(true);
   i = 0;
   zero_mem(l_name, MAX_STR);
-  do {
-    if (i < MAX_STR - 1) {
+  do
+  {
+    if (i < MAX_STR - 1)
+    {
       l_name[i] = ch;
     }
     i += 1;
@@ -197,12 +202,16 @@ static bool lex_scan_identifier_or_keyword(void)
   } while ('_' == ch || isalnum(ch));
   i = 0;
   while (keyword_to_type_table[i].kw_name[0] != '\0' &&
-         (scmp = strcmp(keyword_to_type_table[i].kw_name, l_name)) < 0) {
+         (scmp = strcmp(keyword_to_type_table[i].kw_name, l_name)) < 0)
+  {
     i += 1;
   }
-  if ('\0' != keyword_to_type_table[i].kw_name[0] && 0 == scmp) {
+  if ('\0' != keyword_to_type_table[i].kw_name[0] && 0 == scmp)
+  {
     g_current_lex_unit.l_type = keyword_to_type_table[i].kw_type;
-  } else {
+  }
+  else
+  {
     g_current_lex_unit.l_type = LX_IDENTIFIER;
   }
   return true;
@@ -211,7 +220,8 @@ static bool lex_scan_identifier_or_keyword(void)
 static bool lex_scan_number(void)
 {
   int32_t n = 0;
-  while (isdigit(lex_get_char(true))) {
+  while (isdigit(lex_get_char(true)))
+  {
     n = n*10 + lex_get_char(true) - '0';
     // Skip over digit
     lex_get_char(false);
@@ -227,13 +237,17 @@ static bool lex_scan_symbol(void)
   uint8_t l_type = LX_ERROR;
   char ch = lex_get_char(true);
   lex_get_char(false);
-  switch (ch) {
+  switch (ch)
+  {
     case ':':
-      if ('=' == lex_get_char(true)) {
+      if ('=' == lex_get_char(true))
+      {
         l_type = LX_ASSIGN_SYM;
         // Skip '='
         lex_get_char(false);
-      } else {
+      }
+      else
+      {
         retval = false;
       }
       break;
@@ -241,20 +255,26 @@ static bool lex_scan_symbol(void)
       l_type = LX_EQ_SYM;
       break;
     case '>':
-      if ('=' == lex_get_char(true)) {
+      if ('=' == lex_get_char(true))
+      {
         l_type = LX_GE_SYM;
         // Skip '='
         lex_get_char(false);
-      } else {
+      }
+      else
+      {
         l_type = LX_GT_SYM;
       }
       break;
     case '<':
-      if ('=' == lex_get_char(true)) {
+      if ('=' == lex_get_char(true))
+      {
         l_type = LX_LE_SYM;
         // Skip '='
         lex_get_char(false);
-      } else {
+      }
+      else
+      {
         l_type = LX_LT_SYM;
       }
       break;
@@ -292,9 +312,12 @@ uint8_t lex_x_digit_value(char digit_char)
 {
   uint8_t result;
   digit_char = tolower(digit_char);
-  if (digit_char >= '0' && digit_char <= '9') {
+  if (digit_char >= '0' && digit_char <= '9')
+  {
     result = digit_char - '0';
-  } else {
+  }
+  else
+  {
     result = 10 + digit_char - 'a';
   }
   return result;
@@ -304,16 +327,22 @@ bool lex_scan_char(void)
 {
   char ch = lex_get_char(false);  // Skip over single quote
   bool result = false;
-  switch (ch) {
+  switch (ch)
+  {
     case '\\':  // '\x<hexdigit>+' or '\n' or '\t' or '\''
       ch = lex_get_char(false);  // Skip over backslash.
-      if (EOF == ch) {
+      if (EOF == ch)
+      {
         g_current_lex_unit.l_type = LX_ERROR;
-      } else {
+      }
+      else
+      {
         g_current_lex_unit.l_type = LX_CHAR;
-        if ('x' != tolower(ch)) {
+        if ('x' != tolower(ch))
+        {
           // '\n' or '\t' or '\<anychar but eof>'
-          switch (ch) {
+          switch (ch)
+          {
             case 'n':
               g_current_lex_unit.l_char = '\n';
               break;
@@ -325,24 +354,33 @@ bool lex_scan_char(void)
               break;
           }
           ch = lex_get_char(false);  // Skip over character following backslash.
-          if ('\'' != ch) {
+          if ('\'' != ch)
+          {
             g_current_lex_unit.l_type = LX_ERROR;
-          } else {
+          }
+          else
+          {
             lex_get_char(false);  // Skip over closing single quote.
             result = true;
           }
-        } else {
+        }
+        else
+        {
           // '\x<hexdigit>+' (wraps around 127).
           uint8_t n = 0;
           ch = lex_get_char(false);  // Skip 'x'
-          while (isxdigit(ch)) {
+          while (isxdigit(ch))
+          {
             n = ((n << 4) + lex_x_digit_value(ch));
             n &= 0x7f;  // ASCII only bitches.
             ch = lex_get_char(false);
           }
-          if ('\'' != ch) {
+          if ('\'' != ch)
+          {
             g_current_lex_unit.l_type = LX_ERROR;
-          } else {
+          }
+          else
+          {
             g_current_lex_unit.l_type = LX_CHAR;
             g_current_lex_unit.l_char = n;
             result = true;
@@ -355,12 +393,18 @@ bool lex_scan_char(void)
       g_current_lex_unit.l_type = LX_CHAR;
       g_current_lex_unit.l_char = ch;
       ch = lex_get_char(false);
-      if (EOF == ch) {
+      if (EOF == ch)
+      {
         g_current_lex_unit.l_type = LX_ERROR;
-      } else {
-        if ('\'' != ch) {
+      }
+      else
+      {
+        if ('\'' != ch)
+        {
           g_current_lex_unit.l_type = LX_ERROR;
-        } else {
+        }
+        else
+        {
           lex_get_char(false);  // Skip over single quote.
           result = true;
         }
@@ -370,28 +414,41 @@ bool lex_scan_char(void)
   return result;
 }
 
-bool lex_scan(void) {
+bool lex_scan(void)
+{
   char ch;
   bool retval = true;
   lex_skip_whitespace();
   g_current_lex_unit.l_line_n = g_input_line_n;
   g_current_lex_unit.l_column_n = g_input_column_n - 1   ;
   ch = lex_get_char(true);
-  if (EOF == ch) {
+  if (EOF == ch)
+  {
     retval = g_current_lex_unit.l_type = LX_EOF;
-  } else if (isalpha(ch)) {
+  }
+  else if (isalpha(ch))
+  {
     retval = lex_scan_identifier_or_keyword();
-  } else if (isdigit(ch)) {
+  }
+  else if (isdigit(ch))
+  {
     retval = lex_scan_number();
-  } else if ('\'' == ch) {
+  }
+  else if ('\'' == ch)
+  {
     retval = lex_scan_char();
-  } else if (ispunct(ch)) {
+  }
+  else if (ispunct(ch))
+  {
     retval = lex_scan_symbol();
-  } else {
+  }
+  else
+  {
     g_current_lex_unit.l_type = LX_ERROR;
     retval = false;
   }
-  if (g_lex_debug_print) {
+  if (g_lex_debug_print)
+  {
     lex_print(&g_current_lex_unit);
   }
   return retval;
