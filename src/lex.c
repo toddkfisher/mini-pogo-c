@@ -52,7 +52,8 @@ uint32_t g_input_column_n = 1;
 bool g_lex_debug_print = false;   // Print lexical units as they are scanned.
 
 // Given to us by God.  A gift from Heaven above.
-char *ASCII[] = {
+char *ASCII[] =
+{
   [0x00] = "NUL", [0x01] = "SOH", [0x02] = "STX", [0x03] = "ETX",
   [0x04] = "EOT", [0x05] = "ENQ", [0x06] = "ACK", [0x07] = "BEL",
   [0x08] = "BS",  [0x09] = "HT",  [0x0A] = "LF",  [0x0B] = "VT",
@@ -100,7 +101,8 @@ bool lex_is_symbol(uint8_t lex_type)
 void lex_print(LEXICAL_UNIT *p_lex)
 {
   printf("%s", g_lex_names[p_lex->l_type]);
-  switch (p_lex->l_type) {
+  switch (p_lex->l_type)
+  {
     case LX_IDENTIFIER:
       printf(" %s\n", p_lex->l_name);
       break;

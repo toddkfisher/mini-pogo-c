@@ -30,6 +30,7 @@ struct PARSE_NODE
     struct
     {
       char nd_module_name[MAX_STR];
+      PARSE_NODE *nd_p_init_statements;
       LISTITEM *nd_p_task_decl_list;
     };
     // ND_TASK_DECLARATION
