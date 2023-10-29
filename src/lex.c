@@ -190,7 +190,7 @@ static bool lex_scan_identifier_or_keyword(void)
   // String compare result when searching for keyword.
   int scmp;
   char *l_name = &g_current_lex_unit.l_name[0];
-  char ch = lex_get_char(true);
+  char ch = tolower(lex_get_char(true));
   i = 0;
   zero_mem(l_name, MAX_STR);
   do
@@ -200,7 +200,7 @@ static bool lex_scan_identifier_or_keyword(void)
       l_name[i] = ch;
     }
     i += 1;
-    ch = lex_get_char(false);
+    ch = tolower(lex_get_char(false));
   } while ('_' == ch || isalnum(ch));
   i = 0;
   while (keyword_to_type_table[i].kw_name[0] != '\0' &&
