@@ -173,6 +173,10 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
       case ND_PRINT_CHAR:
         printf("%s\n", ASCII[(uint8_t) p_tree->nd_char]);
         break;
+      case ND_PRINT_INT:
+        printf("\n");
+        parse_print_tree(indent_level + 1, p_tree->nd_p_expr);
+        break;
       case ND_STOP:
         printf("\n");
         break;
@@ -543,6 +547,16 @@ static PARSE_NODE *parse_stop(void)
   return result;
 }
 
+// print-int-statement = 'print_int' expression
+static PARSE_NODE *parse_print_int(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  lex_scan();  // Skip past 'print_int'.
+  result->nd_type = ND_PRINT_INT;
+  result->nd_p_expr = parse_or_expression();
+  return result;
+}
+
 // statement =
 //             assignment-statement
 //           | if-statement
@@ -571,10 +585,9 @@ static PARSE_NODE *parse_statement(void)
   case LX_STOP_KW:
       result = parse_stop();
       break;
-/*    case LX_PRINT_INT_KW:
+  case LX_PRINT_INT_KW:
       result = parse_print_int();
       break;
-*/
     case LX_PRINT_CHAR_KW:
       result = parse_print_char();
       break;

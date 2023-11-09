@@ -138,7 +138,7 @@ void compile_add_backpatch(LABEL *p_label, uint32_t addr)
   p_label->lbl_p_backpatch_list = p_backpatch;
 }
 
-void compile_gen_END_TASK(void)
+void compile_OP_END_TASK(void)
 {
   g_code[g_ip++].i_opcode = OP_END_TASK;
 }
@@ -150,34 +150,30 @@ void compile_binary_op(uint8_t opcode, PARSE_NODE *p_tree)
   g_code[g_ip++].i_opcode = opcode;
 }
 
-void compile_gen_BEGIN_SPAWN(void)
+void compile_OP_BEGIN_SPAWN(void)
 {
   g_code[g_ip++].i_opcode = OP_BEGIN_SPAWN;
 }
 
-void compile_gen_SPAWN(uint32_t task_addr)
+void compile_OP_SPAWN(uint32_t task_addr)
 {
   g_code[g_ip].i_opcode = OP_SPAWN;
   g_code[g_ip++].i_task_addr = task_addr;
 }
 
-void compile_gen_END_SPAWN(void)
+void compile_OP_END_SPAWN(void)
 {
   g_code[g_ip++].i_opcode = OP_END_SPAWN;
 }
 
-void compile_gen_PRINT_INT(void)
+void compile_OP_PRINT_INT(void)
 {
   g_code[g_ip++].i_opcode = OP_PRINT_INT;
 }
 
-void compile_gen_PRINT_CHAR(char ch)
+void compile_OP_PUSH_VAR(char var_name)
 {
-  g_code[g_ip++].i_opcode = OP_PRINT_CHAR;
-}
-
-void compile_gen_PUSH_VAR(char var_name)
-{
+  g_code[g_ip].i_var_name = var_name;
   g_code[g_ip++].i_opcode = OP_PUSH_VAR;
 }
 
@@ -222,7 +218,7 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
         compile_add_backpatch(p_label, g_ip);
       }
     }
-    compile_gen_SPAWN(task_addr);
+    compile_OP_SPAWN(task_addr);
   }
 }
 
@@ -427,7 +423,7 @@ void compile(PARSE_NODE *p_tree)
         compile_ND_SPAWN(p_tree);
         break;
       case ND_STOP:
-        compile_gen_END_TASK();
+        compile_OP_END_TASK();
         break;
       case ND_OR:
         compile_binary_op(OP_OR, p_tree);
@@ -472,7 +468,7 @@ void compile(PARSE_NODE *p_tree)
         compile_binary_op(OP_DIVIDE, p_tree);
         break;
       case ND_VARIABLE:
-        compile_gen_PUSH_VAR(p_tree->nd_var_name);
+        compile_OP_PUSH_VAR(p_tree->nd_var_name);
         break;
       case ND_NUMBER:
         compile_OP_PUSH_CONST_INT(p_tree->nd_number);

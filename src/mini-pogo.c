@@ -271,7 +271,8 @@ enum
   S_TEST_MEM_READ,
   S_TEST_LEX,
   S_LEX_PRINT,
-  S_TEST_PARSE
+  S_TEST_PARSE,
+  S_COMPILE
 };
 
 SWITCH g_lex_test_switches[] =
@@ -283,17 +284,20 @@ SWITCH g_lex_test_switches[] =
   { S_TEST_LEX,       "--lex-test",       "-l",        1,               false },
   { S_LEX_PRINT,      "--lex-print",      "",          1,               false },
   { S_TEST_PARSE,     "--parse-test",     "-p",        1,               false },
+  { S_COMPILE,        "--compile",        "-c",        1,               false },
   SWITCH_LIST_END
 };
 
 void help(void)
 {
-  fprintf(stderr, "--help | -h\nThis help message.\n");
-  fprintf(stderr, "(--file-read-test | -f) file\nTest generic read on file.\n");
-  fprintf(stderr, "--mem-read-test | -m)\nTest generic read on predefined string.\n");
-  fprintf(stderr, "(--lex-test | -l) file\nCompare file lexical units against predefined array.\n");
-  fprintf(stderr, "--lex-print file\nPrint internal representation of each lexical unit scanned from file.\n");
-  fprintf(stderr, "(--parse-test | -p) file\nParse file.  Write parse tree outline (in org format).\n");
+  fprintf(stderr, "OPTIONS:\n");
+  fprintf(stderr, "--help | -h                                This help message.\n");
+  fprintf(stderr, "(--file-read-test | -f) file               Test generic read on file.\n");
+  fprintf(stderr, "--mem-read-test | -m)                      Test generic read on predefined string.\n");
+  fprintf(stderr, "(--lex-test | -l) file                     Compare file lexical units against predefined array.\n");
+  fprintf(stderr, "--lex-print file                           Print internal representation of each lexical unit scanned from file.\n");
+  fprintf(stderr, "(--parse-test | -p) file                   Parse file.  Write parse tree outline (in org format).\n");
+  fprintf(stderr, "(--compile | -c) input-file output-file\n");
 }
 
 int main(int argc, char **argv)
