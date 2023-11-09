@@ -77,12 +77,20 @@ static uint32_t compile_hash(char *s)
   return result;
 }
 
-void compile_create_label_name(char *prefix, char *label_name)
+static void compile_hash_init(void)
+{
+  for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
+  {
+    g_hash_table[i] = NULL;
+  }
+}
+
+static void compile_create_label_name(char *prefix, char *label_name)
 {
   sprintf(label_name, "%s%u", prefix, g_label_suffix_number++);
 }
 
-LABEL *compile_lookup_label(char *label)
+static LABEL *compile_lookup_label(char *label)
 {
   LABEL *result;
   for (result = g_hash_table[compile_hash(label)];
@@ -335,13 +343,24 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
   }
   else
   {
+    BACKPATCH *p_prev_backpatch = NULL;
     for (BACKPATCH *p_backpatch = p_task_label->lbl_p_backpatch_list;
          NULL != p_backpatch;
          p_backpatch = p_backpatch->bp_p_next
       )
     {
       g_code[p_backpatch->bp_addr].i_jump_addr = g_ip;
+      if (NULL != p_prev_backpatch)
+      {
+        free(p_prev_backpatch);
+      }
+      p_prev_backpatch = p_backpatch;
     }
+    if (NULL != p_prev_backpatch)
+    {
+      free(p_prev_backpatch);
+    }
+    p_task_label->lbl_p_backpatch_list = NULL;
   }
   compile_add_counted_string_to_header(p_tree->nd_task_name);
   compile_add_u32_to_header(g_ip);
@@ -386,6 +405,11 @@ void compile_check_for_undefined_tasks(void)
   {
     exit(0);
   }
+}
+
+void compile_init(void)
+{
+  compile_hash_init();
 }
 
 void compile(PARSE_NODE *p_tree)
