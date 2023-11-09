@@ -37,7 +37,8 @@
 
 #include <enum-str.h>
 // Lexical type (LX_..) names as strings. Ex: lex_names[LX_IDENTIFIER] == "LX_IDENTIFIER".
-char *g_lex_names[] = {
+char *g_lex_names[] =
+{
 #include "lex-enums.txt"
 };
 

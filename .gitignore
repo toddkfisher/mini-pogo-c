@@ -2,3 +2,5 @@
 mp-test.org
 *.o
 mp
+src/lst.txt
+src/sloc.awk

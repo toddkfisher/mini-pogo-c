@@ -9,17 +9,31 @@
 
 #include "parse.h"
 #include "lex.h"
+#include "instruction.h"
 #include "compile.h"
 
-//static uint8_t g_header[MAX_HEADER_SIZE];
-//static uint32_t g_idx_header = 0;
+// header_size : u32
+// n_labels    : u32
+// module_name : counted_string
+// label_list  : struct
+//              {
+//                lbl_name : counted_string
+//                lbl_type : u8
+//                lbl_addr : u32 // relative to 0th instruction of code.
+//              } [n_labels]
+
+#define HEADER_SIZE_IDX 0
+#define HEADER_N_LABELS_IDX (sizeof(uint32_t))
+static uint8_t g_header[MAX_HEADER_SIZE];
+static uint32_t g_idx_header = 0;  // Current location in header we are writing to.
+static uint32_t g_n_labels = 0;
 static INSTRUCTION g_code[MAX_CODE_SIZE];
 static uint32_t g_ip = 0;
 
 typedef struct BACKPATCH
 {
   uint32_t bp_addr;  // Where to backpatch.  i.e. index in g_code[] to set jump/spawn/.. address.
-  struct BACKPATCH *bp_p_next;  // .. in list.
+  struct BACKPATCH *bp_p_next;  // Next BACKPATCH in list.
 } BACKPATCH;
 
 typedef struct LABEL
@@ -27,12 +41,29 @@ typedef struct LABEL
   char lbl_name[MAX_STR];
   bool lbl_addr_set;  // Is lbl_addr storing a valid address?
   uint32_t lbl_addr;
+  bool lbl_is_task;  // Jump label or location of task?
   BACKPATCH *lbl_p_backpatch_list;  // Backpatches for forward references to task names.
-  struct LABEL *lbl_p_next;  // .. in hash bucket list.
+  struct LABEL *lbl_p_next;  // next LABEL in hash bucket list.
 } LABEL;
 
 #define HTABLE_SIZE 4999
 static LABEL *g_hash_table[HTABLE_SIZE];
+static uint32_t g_label_suffix_number = 0;
+
+static void compile_add_u32_to_header(uint32_t u32)
+{
+  memcpy(&g_header[g_idx_header], &u32, sizeof(u32));
+  g_idx_header += sizeof(u32);
+}
+
+// Format of counted string: [u32 (bytes)][byte0][byte1]...
+static void compile_add_counted_string_to_header(char *str)
+{
+  uint32_t n_bytes = strlen(str);
+  compile_add_u32_to_header(n_bytes);
+  memcpy(&g_header[g_idx_header], str, n_bytes);
+  g_idx_header += n_bytes;
+}
 
 static uint32_t compile_hash(char *s)
 {
@@ -44,6 +75,11 @@ static uint32_t compile_hash(char *s)
   }
   result = char_sum % HTABLE_SIZE;
   return result;
+}
+
+void compile_create_label_name(char *prefix, char *label_name)
+{
+  sprintf(label_name, "%s%u", prefix, g_label_suffix_number++);
 }
 
 LABEL *compile_lookup_label(char *label)
@@ -58,11 +94,40 @@ LABEL *compile_lookup_label(char *label)
   return result;
 }
 
-void compile_add_label(LABEL *p_label)
+static LABEL *compile_add_label(char *name,
+                                bool addr_set,
+                                uint32_t addr,
+                                bool is_task
+  )
 {
-  uint32_t h = compile_hash(p_label->lbl_name);
-  p_label->lbl_p_next = g_hash_table[h];
-  g_hash_table[h] = p_label;
+  uint32_t h = compile_hash(name);
+  LABEL *result = malloc(sizeof(LABEL));
+  strcpy(result->lbl_name, name);
+  result->lbl_addr_set = false;
+  result->lbl_addr = addr;
+  result->lbl_is_task = true;
+  result->lbl_p_backpatch_list = NULL;
+  result->lbl_p_next = g_hash_table[h];
+  g_hash_table[h] = result;
+  return result;
+}
+
+static LABEL *compile_add_task_label(char *task_name, uint32_t task_addr)
+{
+  LABEL *result = compile_add_label(task_name, /*addr_set*/ true, task_addr, /*is_task*/ true);
+  return result;
+}
+
+static LABEL *compile_add_forward_ref_task_label(char *task_name)
+{
+  LABEL *result = compile_add_label(task_name, /*addr_set*/ false, /*addr*/ 0, /*is_task*/ true);
+  return result;
+}
+
+static LABEL *compile_add_jump_label(char *label_name, uint32_t jump_addr)
+{
+  LABEL *result = compile_add_label(label_name, /*addr_set*/ true, jump_addr, /*is_task*/ false);
+  return result;
 }
 
 void compile_add_backpatch(LABEL *p_label, uint32_t addr)
@@ -140,10 +205,8 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     if (NULL == p_label)
     {
       // Case 1.
-      p_label = malloc(sizeof(LABEL));
-      p_label->lbl_addr_set = false;
-      p_label->lbl_p_backpatch_list = NULL;
-      compile_add_label(p_label);
+      compile_add_forward_ref_task_label(p_task_name->l_name);
+      g_n_labels += 1;
       compile_add_backpatch(p_label, g_ip);
     }
     else
@@ -167,6 +230,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
 {
   uint32_t backpatch_0;
   uint32_t backpatch_1;
+  char jump_label_name[MAX_STR];
   // "if p then ss0 else ss1 end"
   // compiles to:
   //     compile(p)
@@ -183,14 +247,23 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   backpatch_1 = g_ip;
   g_code[g_ip++].i_opcode = OP_JUMP;
   g_code[backpatch_0].i_jump_addr = g_ip;
+    // Add L0 for "disassembler"
+  compile_create_label_name("IF_L0", jump_label_name);
+  compile_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
   compile(p_nd_if->nd_p_false_branch_statement_seq);
   g_code[backpatch_1].i_jump_addr = g_ip;
+    // Add L1 for "disassembler"
+  compile_create_label_name("IF_L1", jump_label_name);
+  compile_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
 }
 
 static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
 {
   uint32_t top_of_loop_addr;
   uint32_t backpatch;
+  char jump_label_name[MAX_STR];
   // "while p do ss end"
   // compiles to:
   //     L0:                 ; <- top_of_loop_addr
@@ -200,6 +273,9 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   //       JUMP L0
   //     L1:                 ; address for jump instruction at backpatch
   top_of_loop_addr = g_ip;
+  compile_create_label_name("WHILE_L0", jump_label_name);
+  compile_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
   compile(p_nd_while->nd_p_while_test_expr);
   backpatch = g_ip;
   g_code[g_ip++].i_opcode = OP_JUMP_IF_ZERO;
@@ -207,6 +283,9 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   g_code[g_ip].i_opcode = OP_JUMP;
   g_code[g_ip++].i_jump_addr = top_of_loop_addr;
   g_code[backpatch].i_jump_addr = g_ip;
+  compile_create_label_name("WHILE_L1", jump_label_name);
+  compile_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
 }
 
 static void compile_OP_POP_INT(char var_name)
@@ -250,6 +329,69 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
   }
 }
 
+static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
+{
+  LABEL *p_task_label = compile_lookup_label(p_tree->nd_task_name);
+  if (NULL == p_task_label)
+  {
+    p_task_label = compile_add_task_label(p_tree->nd_task_name, g_ip);
+    g_n_labels += 1;
+  }
+  else
+  {
+    for (BACKPATCH *p_backpatch = p_task_label->lbl_p_backpatch_list;
+         NULL != p_backpatch;
+         p_backpatch = p_backpatch->bp_p_next
+      )
+    {
+      g_code[p_backpatch->bp_addr].i_jump_addr = g_ip;
+    }
+  }
+  compile_add_counted_string_to_header(p_tree->nd_task_name);
+  compile_add_u32_to_header(g_ip);
+  compile(p_tree->nd_p_task_body);
+  g_code[g_ip++].i_opcode = OP_END_TASK;  // Every task has an implicit 'stop' at the end.
+}
+
+void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
+{
+  compile(p_tree->nd_p_init_statements);
+  g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
+  for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
+       NULL != p_task_declaration;
+       p_task_declaration = p_task_declaration->l_p_next
+    )
+  {
+    compile(p_task_declaration->l_parse_node);
+  }
+}
+
+void compile_check_for_undefined_tasks(void)
+{
+  bool undefined_tasks_found = false;
+  for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
+  {
+    if (NULL != g_hash_table[i])
+    {
+      for (LABEL *p_label = g_hash_table[i];
+           NULL != p_label;
+           p_label = p_label->lbl_p_next
+        )
+      {
+        if (NULL != p_label->lbl_p_backpatch_list)
+        {
+          fprintf(stderr, "Undefined task: %s\n", p_label->lbl_name);
+          undefined_tasks_found = true;
+        }
+      }
+    }
+  }
+  if (undefined_tasks_found)
+  {
+    exit(0);
+  }
+}
+
 void compile(PARSE_NODE *p_tree)
 {
   if (NULL != p_tree)
@@ -257,10 +399,14 @@ void compile(PARSE_NODE *p_tree)
     switch (p_tree->nd_type)
     {
       case ND_MODULE_DECLARATION:
+        compile_ND_MODULE_DECLARATION(p_tree);
+        compile_check_for_undefined_tasks();
         break;
       case ND_TASK_DECLARATION:
+        compile_ND_TASK_DECLARATION(p_tree);
         break;
       case ND_STATEMENT_SEQUENCE:
+        compile_ND_STATEMENT_SEQUENCE(p_tree);
         break;
       case ND_ASSIGN:
         compile_OP_POP_INT(p_tree->nd_var_name);
@@ -272,7 +418,7 @@ void compile(PARSE_NODE *p_tree)
         compile_ND_WHILE(p_tree);
         break;
       case ND_PRINT_INT:
-        compile_ND_PRINT_INT();
+        compile_ND_PRINT_INT(p_tree);
         break;
       case ND_PRINT_CHAR:
         compile_OP_PRINT_CHAR(p_tree->nd_char);
