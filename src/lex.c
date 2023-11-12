@@ -423,7 +423,7 @@ bool lex_scan(void)
   bool retval = true;
   lex_skip_whitespace();
   g_current_lex_unit.l_line_n = g_input_line_n;
-  g_current_lex_unit.l_column_n = g_input_column_n - 1   ;
+  g_current_lex_unit.l_column_n = g_input_column_n - 1;
   ch = lex_get_char(true);
   if (EOF == ch)
   {
