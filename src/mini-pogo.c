@@ -2,15 +2,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <signal.h>
 #include <cmdline-switch.h>
 
 #include "lex.h"
 #include "parse.h"
+#include "compile.h"
 
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
+extern bool g_lex_debug_print;  // Print lexical units as they are scanned.
 
 // Sequence of expected lexical types from test-module-3.pogo.
 uint8_t test_module_3_pogo_lex_types[] =
@@ -141,7 +144,7 @@ void test_lex(char *const filename)
                g_lex_names[g_current_lex_unit.l_type],
                g_lex_names[test_module_3_pogo_lex_types[lex_unit_n]]);
         fclose(fr.f_file);
-        exit(0);
+        error_exit(0);
       }
       lex_unit_n += 1;
     } while (LX_EOF != g_current_lex_unit.l_type);
@@ -186,6 +189,38 @@ void test_parse(char *const filename)
       parse_print_tree(1, p_node);
     }
     fclose(fr.f_file);
+  }
+}
+
+void compile_header_only(char *input_filename,
+                         char *output_filename)
+{
+  FILE_READ fr;
+  FILE *fout;
+  if (NULL == (fr.f_file = fopen(input_filename, "r")))
+  {
+    fprintf(stderr, "%s : not found\n", input_filename);
+  }
+  else
+  {
+    PARSE_NODE *p_tree;
+    fr.f_first_read_occured = false;
+    lex_set_input_function(file_input, &fr);
+    if (NULL != (p_tree = parse()))
+    {
+      if (NULL == (fout = fopen(output_filename, "w")))
+      {
+        fprintf(stderr, "%s : cannot open\n", output_filename);
+        fclose(fr.f_file);
+      }
+      else
+      {
+        compile_init();
+        compile(p_tree);
+        compile_write_header(fout);
+        fclose(fout);
+      }
+    }
   }
 }
 
@@ -272,32 +307,32 @@ enum
   S_TEST_LEX,
   S_LEX_PRINT,
   S_TEST_PARSE,
-  S_COMPILE
+  S_COMPILE_HEADER
 };
 
 SWITCH g_lex_test_switches[] =
 {
-//  s_switch_id       s_long_name         s_short_name s_max_parameters s_allow_dashed_parmameters
-  { S_HELP,           "--help",           "-h",        0,               false },
-  { S_TEST_FILE_READ, "--file-read-test", "-f",        1,               false },
-  { S_TEST_MEM_READ,  "--mem-read-test",  "-m",        0,               false },
-  { S_TEST_LEX,       "--lex-test",       "-l",        1,               false },
-  { S_LEX_PRINT,      "--lex-print",      "",          1,               false },
-  { S_TEST_PARSE,     "--parse-test",     "-p",        1,               false },
-  { S_COMPILE,        "--compile",        "-c",        1,               false },
+//  s_switch_id         s_long_name               s_short_name  s_max_parameters  s_allow_dashed_parmameters
+  { S_HELP,             "--help",                 "-h",         0,                false   },
+  { S_TEST_FILE_READ,   "--file-read-test",       "-f",         1,                false   },
+  { S_TEST_MEM_READ,    "--mem-read-test",        "-m",         0,                false   },
+  { S_TEST_LEX,         "--lex-test",             "-l",         1,                false   },
+  { S_LEX_PRINT,        "--lex-print",            "",           1,                false   },
+  { S_TEST_PARSE,       "--parse-test",           "-p",         1,                false   },
+  { S_COMPILE_HEADER,   "--compile-header-only",  "",           2,                false   },
   SWITCH_LIST_END
 };
 
 void help(void)
 {
   fprintf(stderr, "OPTIONS:\n");
-  fprintf(stderr, "--help | -h                                This help message.\n");
-  fprintf(stderr, "(--file-read-test | -f) file               Test generic read on file.\n");
-  fprintf(stderr, "--mem-read-test | -m)                      Test generic read on predefined string.\n");
-  fprintf(stderr, "(--lex-test | -l) file                     Compare file lexical units against predefined array.\n");
-  fprintf(stderr, "--lex-print file                           Print internal representation of each lexical unit scanned from file.\n");
-  fprintf(stderr, "(--parse-test | -p) file                   Parse file.  Write parse tree outline (in org format).\n");
-  fprintf(stderr, "(--compile | -c) input-file output-file\n");
+  fprintf(stderr, "--help | -h                                       This help message.\n");
+  fprintf(stderr, "(--file-read-test | -f) file                      Test generic read on file.\n");
+  fprintf(stderr, "--mem-read-test | -m)                             Test generic read on predefined string.\n");
+  fprintf(stderr, "(--lex-test | -l) file                            Compare file lexical units against predefined array.\n");
+  fprintf(stderr, "--lex-print file                                  Print internal representation of each lexical unit scanned from file.\n");
+  fprintf(stderr, "(--parse-test | -p) file                          Parse file.  Write parse tree outline (in org format).\n");
+  fprintf(stderr, "(--compile-header-only input-file output-file     Write header and no code to output-file.\n");
 }
 
 int main(int argc, char **argv)
@@ -357,7 +392,19 @@ int main(int argc, char **argv)
             }
             break;
           case S_LEX_PRINT:
-            scan_file_and_print(switch_params[0]);
+            g_lex_debug_print = true;
+            printf("printing lex units.\n");
+            //scan_file_and_print(switch_params[0]);
+            break;
+          case S_COMPILE_HEADER:
+            if (n_params != 2)
+            {
+              fprintf(stderr, "Usage mp --compile-header-only inputfile outputfile\n");
+            }
+            else
+            {
+              compile_header_only(switch_params[0], switch_params[1]);
+            }
             break;
           case S_HELP:
             help();

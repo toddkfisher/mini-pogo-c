@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include <signal.h>
+#include <ctype.h>
 #include <util.h>
 
 #include "parse.h"
@@ -25,10 +25,11 @@
 #define HEADER_SIZE_IDX 0
 #define HEADER_N_LABELS_IDX (sizeof(uint32_t))
 static uint8_t g_header[MAX_HEADER_SIZE];
-static uint32_t g_idx_header = 2*sizeof(uint32_t);  // Start after header_size and n_labels.
+static uint32_t g_idx_header = HEADER_N_LABELS_IDX + sizeof(uint32_t);  // Start after header_size and n_labels.
 static uint32_t g_n_labels = 0;
 static INSTRUCTION g_code[MAX_CODE_SIZE];
 static uint32_t g_ip = 0;
+static char g_module_name[MAX_STR];
 
 typedef struct BACKPATCH
 {
@@ -56,14 +57,13 @@ static void compile_add_u32_to_header(uint32_t u32)
   g_idx_header += sizeof(u32);
 }
 
-#if 0
 static void compile_add_u8_to_header(uint8_t u8)
 {
   memcpy(&g_header[g_idx_header], &u8, sizeof(u8));
   g_idx_header += sizeof(u8);
 }
-#endif
 
+// Add counted string to (current) end of header.
 // Format of counted string: [u32 (bytes)][byte0][byte1]...
 static void compile_add_counted_string_to_header(char *str)
 {
@@ -73,15 +73,19 @@ static void compile_add_counted_string_to_header(char *str)
   g_idx_header += n_bytes;
 }
 
-#if 0
+// Place u32 at specific location (ofs) in g_header.
+static void compile_poke_u32_to_header(uint32_t u32, uint32_t ofs)
+{
+  *((uint32_t *) (g_header + ofs)) = u32;
+}
+
 static void compile_add_labels_to_header(void)
 {
   for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
   {
     for (LABEL *p_label = g_hash_table[i];
          NULL != p_label;
-         p_label = p_label->lbl_p_next
-      )
+         p_label = p_label->lbl_p_next)
     {
       compile_add_counted_string_to_header(p_label->lbl_name);
       compile_add_u8_to_header((uint8_t) p_label->lbl_is_task);
@@ -89,7 +93,6 @@ static void compile_add_labels_to_header(void)
     }
   }
 }
-#endif
 
 static uint32_t compile_hash(char *s)
 {
@@ -235,7 +238,7 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     if (NULL == p_label)
     {
       // Case 1.
-      compile_add_forward_ref_task_label(p_task_name->l_name);
+      p_label = compile_add_forward_ref_task_label(p_task_name->l_name);
       g_n_labels += 1;
       compile_add_backpatch(p_label, g_ip);
     }
@@ -388,15 +391,12 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
     }
     p_task_label->lbl_p_backpatch_list = NULL;
   }
-  compile_add_counted_string_to_header(p_tree->nd_task_name);
-  compile_add_u32_to_header(g_ip);
   compile(p_tree->nd_p_task_body);
   g_code[g_ip++].i_opcode = OP_END_TASK;  // Every task has an implicit 'stop' at the end.
 }
 
 void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
 {
-  compile_add_counted_string_to_header(p_tree->nd_module_name);
   compile(p_tree->nd_p_init_statements);
   g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
   for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
@@ -430,13 +430,27 @@ void compile_check_for_undefined_tasks(void)
   }
   if (undefined_tasks_found)
   {
-    exit(0);
+    error_exit(0);
   }
 }
 
 void compile_init(void)
 {
   compile_hash_init();
+}
+
+static void compile_build_header(void)
+{
+  compile_add_counted_string_to_header(g_module_name);
+  compile_add_labels_to_header();
+  compile_poke_u32_to_header(g_idx_header, HEADER_SIZE_IDX);
+  compile_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
+}
+
+uint32_t compile_write_header(FILE *fout)
+{
+  uint32_t n_bytes_written = fwrite(g_header, sizeof(uint8_t), g_idx_header, fout);
+  return n_bytes_written;
 }
 
 void compile(PARSE_NODE *p_tree)
@@ -448,6 +462,8 @@ void compile(PARSE_NODE *p_tree)
       case ND_MODULE_DECLARATION:
         compile_ND_MODULE_DECLARATION(p_tree);
         compile_check_for_undefined_tasks();
+        strcpy(g_module_name, p_tree->nd_module_name);
+        compile_build_header();
         break;
       case ND_TASK_DECLARATION:
         compile_ND_TASK_DECLARATION(p_tree);

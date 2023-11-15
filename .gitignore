@@ -2,5 +2,7 @@
 mp-test.org
 *.o
 mp
+hp
 src/lst.txt
 src/sloc.awk
+*.cpogo

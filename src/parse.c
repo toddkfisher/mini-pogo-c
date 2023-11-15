@@ -219,7 +219,7 @@ static void parse_expect(uint8_t lx_type_expected,
             g_input_line_n, g_input_column_n);
     lex_print(&g_current_lex_unit);
     fprintf(stderr, "%s expected.\n", g_lex_names[lx_type_expected]);
-    exit(0);
+    error_exit(0);
   }
   else if (skip_to_next)
     lex_scan();
@@ -268,7 +268,7 @@ static PARSE_NODE *parse_factor(void)
       fprintf(stderr, "%d:%d : Unexpected lexical unit %s.\n",
               g_input_line_n, g_input_column_n,
               g_lex_names[g_current_lex_unit.l_type]);
-      exit(0);
+      error_exit(0);
       break;
   }
   return retval;
