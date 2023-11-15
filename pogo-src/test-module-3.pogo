@@ -10,10 +10,7 @@ module test
     spawn t0; t1; t1; end;
   end;
 
-
- `
-
-task t0;
+  task t0;
     stop;
   end;
 
