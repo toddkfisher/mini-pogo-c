@@ -12,24 +12,24 @@
 // THEORY OF OPERATION:
 //
 // Header data is read from/written to g_header[] using the simple functions below.  Byte ordering same as CPU.
-// "add" place data starting at g_idx_header and update the index to point to the next "available" byte after
-// the data.
+// "add" means to place data starting at g_idx_header and update the index to point to the next "available" byte after
+// the data.  "poke" means to put data at specific index in g_header[].
 //
 // POGO BINARY HEADER FORMAT:
 //
 // header_size (in bytes) : u32
 // n_labels               : u32
-// (NYI) code_size (in bytes)   : u32
+// code_size (in bytes)   : u32
 // module_name : counted_string
 // label_list  : struct
 //              {
 //                lbl_name : counted_string
-//                lbl_type : u8 (0 : jump label, !0 : task label)
+//                lbl_type : u8 (0 == jump label, !0 == task label)
 //                lbl_addr : u32 // relative to 0th instruction of code.
 //              } [n_labels]
 
 static uint8_t g_header[MAX_HEADER_SIZE];
-static uint32_t g_idx_header = HEADER_N_LABELS_IDX + sizeof(uint32_t);  // Where to add bytes to. Start after header_size and n_labels
+static uint32_t g_idx_header = HEADER_MODULE_NAME_IDX;  // Where to add bytes to. Start after header_size + n_labels + code_size
 
 void bhdr_add_u32_to_header(uint32_t u32)
 {
@@ -84,6 +84,12 @@ uint8_t bhdr_get_u8(uint32_t ofs)
 uint32_t bhdr_get_label_count(void)
 {
   uint32_t result = bhdr_get_u32(HEADER_N_LABELS_IDX);
+  return result;
+}
+
+uint32_t bhdr_get_code_size_in_bytes(void)
+{
+  uint32_t result = bhdr_get_u32(HEADER_CODE_SIZE_IDX);
   return result;
 }
 

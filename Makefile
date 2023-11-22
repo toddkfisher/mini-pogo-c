@@ -9,7 +9,7 @@ SRC_DIR=$(ROOT_DIR)/src
 O_DIR=$(ROOT_DIR)/obj
 BIN_DIR=$(ROOT_DIR)/bin
 
-# "compiler" (m)ini (p)ogo (c)ompiler
+# mpc: "compiler" (m)ini (p)ogo (c)ompiler
 MPC=$(BIN_DIR)/mpc
 MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o
 

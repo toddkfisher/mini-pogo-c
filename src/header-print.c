@@ -7,6 +7,7 @@
 #include <util.h>
 
 #include "binary-header.h"
+#include "instruction.h"
 
 int main(int argc, char **argv)
 {
@@ -33,9 +34,12 @@ int main(int argc, char **argv)
       uint8_t lbl_type;
       uint32_t lbl_addr;
       uint32_t ofs;
+      uint32_t code_size_bytes;  // in bytes
       n_labels = bhdr_get_label_count();
+      code_size_bytes = bhdr_get_code_size_in_bytes();
       n_chars = bhdr_get_counted_string(HEADER_MODULE_NAME_IDX, name);
       printf("Module name: %s\n", name);
+      printf("Code size = %d (bytes), %lu (instructions)\n", code_size_bytes, code_size_bytes/sizeof(INSTRUCTION));
       printf("Number of labels = %d\n", n_labels);
       ofs = bhdr_get_label_list_ofs();
       for (uint32_t i = 0; i < n_labels; ++i)

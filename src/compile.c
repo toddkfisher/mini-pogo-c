@@ -405,6 +405,7 @@ void compile_init(void)
 void compile_build_header(void)
 {
   bhdr_add_counted_string_to_header(g_module_name);
+  bhdr_poke_u32_to_header(g_ip*sizeof(INSTRUCTION), HEADER_CODE_SIZE_IDX);
   compile_add_labels_to_header();
   bhdr_poke_u32_to_header(bhdr_get_bytes_added(), HEADER_SIZE_IDX);
   bhdr_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
