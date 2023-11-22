@@ -1,8 +1,11 @@
 \#*\#
 mp-test.org
 *.o
-mp
-hp
+bin/mp
+pogo-src/hp
 src/lst.txt
 src/sloc.awk
 *.cpogo
+bin/hp
+bin/mpc
+bin/mph

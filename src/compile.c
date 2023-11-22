@@ -10,22 +10,9 @@
 #include "parse.h"
 #include "lex.h"
 #include "instruction.h"
+#include "binary-header.h"
 #include "compile.h"
 
-// header_size : u32
-// n_labels    : u32
-// module_name : counted_string
-// label_list  : struct
-//              {
-//                lbl_name : counted_string
-//                lbl_type : u8 (0 : jump label, !0 : task label)
-//                lbl_addr : u32 // relative to 0th instruction of code.
-//              } [n_labels]
-
-#define HEADER_SIZE_IDX 0
-#define HEADER_N_LABELS_IDX (sizeof(uint32_t))
-static uint8_t g_header[MAX_HEADER_SIZE];
-static uint32_t g_idx_header = HEADER_N_LABELS_IDX + sizeof(uint32_t);  // Start after header_size and n_labels.
 static uint32_t g_n_labels = 0;
 static INSTRUCTION g_code[MAX_CODE_SIZE];
 static uint32_t g_ip = 0;
@@ -51,34 +38,6 @@ typedef struct LABEL
 static LABEL *g_hash_table[HTABLE_SIZE];
 static uint32_t g_label_suffix_number = 0;
 
-static void compile_add_u32_to_header(uint32_t u32)
-{
-  memcpy(&g_header[g_idx_header], &u32, sizeof(u32));
-  g_idx_header += sizeof(u32);
-}
-
-static void compile_add_u8_to_header(uint8_t u8)
-{
-  memcpy(&g_header[g_idx_header], &u8, sizeof(u8));
-  g_idx_header += sizeof(u8);
-}
-
-// Add counted string to (current) end of header.
-// Format of counted string: [u32 (bytes)][byte0][byte1]...
-static void compile_add_counted_string_to_header(char *str)
-{
-  uint32_t n_bytes = strlen(str);
-  compile_add_u32_to_header(n_bytes);
-  memcpy(&g_header[g_idx_header], str, n_bytes);
-  g_idx_header += n_bytes;
-}
-
-// Place u32 at specific location (ofs) in g_header.
-static void compile_poke_u32_to_header(uint32_t u32, uint32_t ofs)
-{
-  *((uint32_t *) (g_header + ofs)) = u32;
-}
-
 static void compile_add_labels_to_header(void)
 {
   for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
@@ -87,9 +46,9 @@ static void compile_add_labels_to_header(void)
          NULL != p_label;
          p_label = p_label->lbl_p_next)
     {
-      compile_add_counted_string_to_header(p_label->lbl_name);
-      compile_add_u8_to_header((uint8_t) p_label->lbl_is_task);
-      compile_add_u32_to_header(p_label->lbl_addr);
+      bhdr_add_counted_string_to_header(p_label->lbl_name);
+      bhdr_add_u8_to_header((uint8_t) p_label->lbl_is_task);
+      bhdr_add_u32_to_header(p_label->lbl_addr);
     }
   }
 }
@@ -134,15 +93,14 @@ static LABEL *compile_lookup_label(char *label)
 static LABEL *compile_add_label(char *name,
                                 bool addr_set,
                                 uint32_t addr,
-                                bool is_task
-  )
+                                bool is_task)
 {
   uint32_t h = compile_hash(name);
   LABEL *result = malloc(sizeof(LABEL));
   strcpy(result->lbl_name, name);
   result->lbl_addr_set = false;
   result->lbl_addr = addr;
-  result->lbl_is_task = true;
+  result->lbl_is_task = is_task;
   result->lbl_p_backpatch_list = NULL;
   result->lbl_p_next = g_hash_table[h];
   g_hash_table[h] = result;
@@ -373,6 +331,8 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
   else
   {
     BACKPATCH *p_prev_backpatch = NULL;
+    p_task_label->lbl_addr = g_ip;
+    p_task_label->lbl_addr_set = true;
     for (BACKPATCH *p_backpatch = p_task_label->lbl_p_backpatch_list;
          NULL != p_backpatch;
          p_backpatch = p_backpatch->bp_p_next
@@ -399,6 +359,7 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_init_statements);
   g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
+  DBG_PRINT_VAR(g_ip, HEX);
   for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
        NULL != p_task_declaration;
        p_task_declaration = p_task_declaration->l_p_next
@@ -406,6 +367,7 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
   {
     compile(p_task_declaration->l_parse_node);
   }
+  DBG_PRINT_VAR(g_ip, HEX);
 }
 
 void compile_check_for_undefined_tasks(void)
@@ -437,20 +399,15 @@ void compile_check_for_undefined_tasks(void)
 void compile_init(void)
 {
   compile_hash_init();
+  bhdr_init();
 }
 
-static void compile_build_header(void)
+void compile_build_header(void)
 {
-  compile_add_counted_string_to_header(g_module_name);
+  bhdr_add_counted_string_to_header(g_module_name);
   compile_add_labels_to_header();
-  compile_poke_u32_to_header(g_idx_header, HEADER_SIZE_IDX);
-  compile_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
-}
-
-uint32_t compile_write_header(FILE *fout)
-{
-  uint32_t n_bytes_written = fwrite(g_header, sizeof(uint8_t), g_idx_header, fout);
-  return n_bytes_written;
+  bhdr_poke_u32_to_header(bhdr_get_bytes_added(), HEADER_SIZE_IDX);
+  bhdr_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
 }
 
 void compile(PARSE_NODE *p_tree)

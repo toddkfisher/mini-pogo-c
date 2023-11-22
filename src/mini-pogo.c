@@ -8,6 +8,8 @@
 #include "lex.h"
 #include "parse.h"
 #include "compile.h"
+#include "binary-header.h"
+
 
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
@@ -217,7 +219,8 @@ void compile_header_only(char *input_filename,
       {
         compile_init();
         compile(p_tree);
-        compile_write_header(fout);
+        compile_build_header();
+        bhdr_write(fout);
         fclose(fout);
       }
     }
@@ -361,7 +364,7 @@ int main(int argc, char **argv)
           case S_TEST_FILE_READ:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mp -f file\n");
+              fprintf(stderr, "Usage: mpc -f file\n");
             }
             else
             {
@@ -374,7 +377,7 @@ int main(int argc, char **argv)
           case S_TEST_LEX:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mp -l file\n");
+              fprintf(stderr, "Usage: mpc -l file\n");
             }
             else
             {
@@ -384,7 +387,7 @@ int main(int argc, char **argv)
           case S_TEST_PARSE:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mp -p file\n");
+              fprintf(stderr, "Usage: mpc -p file\n");
             }
             else
             {

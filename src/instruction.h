@@ -1,8 +1,6 @@
 #pragma once
 
-#define MAX_HEADER_SIZE 4096  // bytes
 #define MAX_CODE_SIZE 4096  // instructions
-#define MAX_TASK_DECLS 128
 
 #include <enum-int.h>
 enum OPCODE
