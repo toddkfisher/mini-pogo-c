@@ -10,6 +10,14 @@
 #include "compile.h"
 #include "binary-header.h"
 
+#define macstr(x) #x
+
+enum COMPILE_FLAGS
+{
+  CF_NONE = 0,
+  CF_HEADER = 1,
+  CF_CODE = 2
+};
 
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
@@ -222,6 +230,49 @@ void compile_header_only(char *input_filename,
         compile_build_header();
         bhdr_write(fout);
         fclose(fout);
+        fclose(fr.f_file);
+      }
+    }
+  }
+}
+
+void compile_selectively(uint32_t compile_flags,
+                         char *input_filename,
+                         char *output_filename)
+{
+  FILE_READ fr;
+  FILE *fout;
+  if (NULL == (fr.f_file = fopen(input_filename, "r")))
+  {
+    fprintf(stderr, "%s : not found\n", input_filename);
+  }
+  else
+  {
+    PARSE_NODE *p_tree;
+    fr.f_first_read_occured = false;
+    lex_set_input_function(file_input, &fr);
+    if (NULL != (p_tree = parse()))
+    {
+      if (NULL == (fout = fopen(output_filename, "w")))
+      {
+        fprintf(stderr, "%s : cannot open\n", output_filename);
+        fclose(fr.f_file);
+      }
+      else
+      {
+        compile_init();
+        compile(p_tree);
+        compile_build_header();
+        if (compile_flags & CF_HEADER)
+        {
+          bhdr_write(fout);
+        }
+        if (compile_flags & CF_CODE)
+        {
+          compile_write_code(fout);
+        }
+        fclose(fout);
+        fclose(fr.f_file);
       }
     }
   }
@@ -310,19 +361,21 @@ enum
   S_TEST_LEX,
   S_LEX_PRINT,
   S_TEST_PARSE,
-  S_COMPILE_HEADER
+  S_COMPILE_HEADER,
+  S_COMPILE
 };
 
 SWITCH g_lex_test_switches[] =
 {
 //  s_switch_id         s_long_name               s_short_name  s_max_parameters  s_allow_dashed_parmameters
-  { S_HELP,             "--help",                 "-h",         0,                false   },
-  { S_TEST_FILE_READ,   "--file-read-test",       "-f",         1,                false   },
-  { S_TEST_MEM_READ,    "--mem-read-test",        "-m",         0,                false   },
-  { S_TEST_LEX,         "--lex-test",             "-l",         1,                false   },
-  { S_LEX_PRINT,        "--lex-print",            "",           1,                false   },
-  { S_TEST_PARSE,       "--parse-test",           "-p",         1,                false   },
-  { S_COMPILE_HEADER,   "--compile-header-only",  "",           2,                false   },
+  { S_HELP,             "--help",                 "-h",         0,                false },
+  { S_TEST_FILE_READ,   "--file-read-test",       "-f",         1,                false },
+  { S_TEST_MEM_READ,    "--mem-read-test",        "-m",         0,                false },
+  { S_TEST_LEX,         "--lex-test",             "-l",         1,                false },
+  { S_LEX_PRINT,        "--lex-print",            "",           1,                false },
+  { S_TEST_PARSE,       "--parse-test",           "-p",         1,                false },
+  { S_COMPILE_HEADER,   "--compile-header-only",  "",           2,                false },
+  { S_COMPILE,          "--compile",              "-c",         2,                false },
   SWITCH_LIST_END
 };
 
@@ -346,7 +399,7 @@ int main(int argc, char **argv)
   char *switch_params[255];
   if (argc <= 1)
   {
-    fprintf(stderr, "usage: mp [-f <file> | -m | -l <file>]\n");
+    fprintf(stderr, "usage: %s [-f <file> | -m | -l <file>]\n", macstr(#PROGRAM_NAME));
   }
   else
   {
@@ -364,7 +417,7 @@ int main(int argc, char **argv)
           case S_TEST_FILE_READ:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mpc -f file\n");
+              fprintf(stderr, "Usage: %s -f file\n", macstr(PROGRAM_NAME));
             }
             else
             {
@@ -377,7 +430,7 @@ int main(int argc, char **argv)
           case S_TEST_LEX:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mpc -l file\n");
+              fprintf(stderr, "Usage: %s -l file\n", macstr(#PROGRAM_NAME));
             }
             else
             {
@@ -387,7 +440,7 @@ int main(int argc, char **argv)
           case S_TEST_PARSE:
             if (n_params != 1)
             {
-              fprintf(stderr, "Usage: mpc -p file\n");
+              fprintf(stderr, "Usage: %s -p file\n", macstr(#PROGRAM_NAME));
             }
             else
             {
@@ -402,11 +455,21 @@ int main(int argc, char **argv)
           case S_COMPILE_HEADER:
             if (n_params != 2)
             {
-              fprintf(stderr, "Usage mp --compile-header-only inputfile outputfile\n");
+              fprintf(stderr, "Usage %s --compile-header-only inputfile outputfile\n", macstr(#PROGRAM_NAME));
             }
             else
             {
-              compile_header_only(switch_params[0], switch_params[1]);
+              compile_selectively(CF_HEADER, switch_params[0], switch_params[1]);
+            }
+            break;
+          case S_COMPILE:
+            if (n_params != 2)
+            {
+              fprintf(stderr, "Usage %s --compile inputfile outputfile\n", macstr(#PROGRAM_NAME));
+            }
+            else
+            {
+              compile_selectively(CF_HEADER | CF_CODE , switch_params[0], switch_params[1]);
             }
             break;
           case S_HELP:

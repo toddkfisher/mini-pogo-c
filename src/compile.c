@@ -12,30 +12,14 @@
 #include "instruction.h"
 #include "binary-header.h"
 #include "compile.h"
+#include "symbol-table.h"
 
 static uint32_t g_n_labels = 0;
 static INSTRUCTION g_code[MAX_CODE_SIZE];
 static uint32_t g_ip = 0;
 static char g_module_name[MAX_STR];
 
-typedef struct BACKPATCH
-{
-  uint32_t bp_addr;  // Where to backpatch.  i.e. index in g_code[] to set jump/spawn/.. address.
-  struct BACKPATCH *bp_p_next;  // Next BACKPATCH in list.
-} BACKPATCH;
-
-typedef struct LABEL
-{
-  char lbl_name[MAX_STR];
-  bool lbl_addr_set;  // Is lbl_addr storing a valid address?
-  uint32_t lbl_addr;
-  bool lbl_is_task;  // Jump label or location of task?
-  BACKPATCH *lbl_p_backpatch_list;  // Backpatches for forward references to task names.
-  struct LABEL *lbl_p_next;  // next LABEL in hash bucket list.
-} LABEL;
-
-#define HTABLE_SIZE 4999
-static LABEL *g_hash_table[HTABLE_SIZE];
+extern LABEL *g_hash_table[HTABLE_SIZE];
 static uint32_t g_label_suffix_number = 0;
 
 static void compile_add_labels_to_header(void)
@@ -51,86 +35,6 @@ static void compile_add_labels_to_header(void)
       bhdr_add_u32_to_header(p_label->lbl_addr);
     }
   }
-}
-
-static uint32_t compile_hash(char *s)
-{
-  uint32_t char_sum = 0;
-  uint32_t result;
-  while (*s)
-  {
-    char_sum += *s++;
-  }
-  result = char_sum % HTABLE_SIZE;
-  return result;
-}
-
-static void compile_hash_init(void)
-{
-  for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
-  {
-    g_hash_table[i] = NULL;
-  }
-}
-
-static void compile_create_label_name(char *prefix, char *label_name)
-{
-  sprintf(label_name, "%s%u", prefix, g_label_suffix_number++);
-}
-
-static LABEL *compile_lookup_label(char *label)
-{
-  LABEL *result;
-  for (result = g_hash_table[compile_hash(label)];
-       NULL != result && !STREQ(label, result->lbl_name);
-       result = result->lbl_p_next)
-  {
-    // Empty loop body.  Everything happens in for loop header.
-  }
-  return result;
-}
-
-static LABEL *compile_add_label(char *name,
-                                bool addr_set,
-                                uint32_t addr,
-                                bool is_task)
-{
-  uint32_t h = compile_hash(name);
-  LABEL *result = malloc(sizeof(LABEL));
-  strcpy(result->lbl_name, name);
-  result->lbl_addr_set = false;
-  result->lbl_addr = addr;
-  result->lbl_is_task = is_task;
-  result->lbl_p_backpatch_list = NULL;
-  result->lbl_p_next = g_hash_table[h];
-  g_hash_table[h] = result;
-  return result;
-}
-
-static LABEL *compile_add_task_label(char *task_name, uint32_t task_addr)
-{
-  LABEL *result = compile_add_label(task_name, /*addr_set*/ true, task_addr, /*is_task*/ true);
-  return result;
-}
-
-static LABEL *compile_add_forward_ref_task_label(char *task_name)
-{
-  LABEL *result = compile_add_label(task_name, /*addr_set*/ false, /*addr*/ 0, /*is_task*/ true);
-  return result;
-}
-
-static LABEL *compile_add_jump_label(char *label_name, uint32_t jump_addr)
-{
-  LABEL *result = compile_add_label(label_name, /*addr_set*/ true, jump_addr, /*is_task*/ false);
-  return result;
-}
-
-void compile_add_backpatch(LABEL *p_label, uint32_t addr)
-{
-  BACKPATCH *p_backpatch = malloc(sizeof(BACKPATCH));
-  p_backpatch->bp_addr = addr;
-  p_backpatch->bp_p_next = p_label->lbl_p_backpatch_list;
-  p_label->lbl_p_backpatch_list = p_backpatch;
 }
 
 void compile_OP_END_TASK(void)
@@ -191,14 +95,14 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
        g_ip += 1
     )
   {
-    LABEL *p_label = compile_lookup_label(p_task_name->l_name);
+    LABEL *p_label = stab_lookup_label(p_task_name->l_name);
     uint32_t task_addr = 0;
     if (NULL == p_label)
     {
       // Case 1.
-      p_label = compile_add_forward_ref_task_label(p_task_name->l_name);
+      p_label = stab_add_forward_ref_task_label(p_task_name->l_name);
       g_n_labels += 1;
-      compile_add_backpatch(p_label, g_ip);
+      stab_add_backpatch(p_label, g_ip);
     }
     else
     {
@@ -210,11 +114,16 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
       else
       {
         // Case 3.
-        compile_add_backpatch(p_label, g_ip);
+        stab_add_backpatch(p_label, g_ip);
       }
     }
     compile_OP_SPAWN(task_addr);
   }
+}
+
+static void compile_create_label_name(char *prefix, char *name_dest)
+{
+  sprintf(name_dest, "@%s_(%u)", prefix, g_label_suffix_number++);
 }
 
 static void compile_ND_IF(PARSE_NODE *p_nd_if)
@@ -233,20 +142,21 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   //   L1:                   ; address for jump instruction at backpatch_1
   compile(p_nd_if->nd_p_if_test_expr);
   backpatch_0 = g_ip;
-  g_code[g_ip++].i_opcode = OP_JUMP_IF_ZERO;
+  g_code[g_ip].i_opcode = OP_JUMP_IF_ZERO;
+  g_code[g_ip++].i_jump_addr = 0;  // To be backpatched later.
   compile(p_nd_if->nd_p_true_branch_statement_seq);
   backpatch_1 = g_ip;
   g_code[g_ip++].i_opcode = OP_JUMP;
   g_code[backpatch_0].i_jump_addr = g_ip;
-    // Add L0 for "disassembler"
+  // Add L0 for "disassembler"
   compile_create_label_name("IF_L0", jump_label_name);
-  compile_add_jump_label(jump_label_name, g_ip);
+  stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
   compile(p_nd_if->nd_p_false_branch_statement_seq);
   g_code[backpatch_1].i_jump_addr = g_ip;
-    // Add L1 for "disassembler"
+  // Add L1 for "disassembler"
   compile_create_label_name("IF_L1", jump_label_name);
-  compile_add_jump_label(jump_label_name, g_ip);
+  stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
 }
 
@@ -265,7 +175,7 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   //     L1:                 ; address for jump instruction at backpatch
   top_of_loop_addr = g_ip;
   compile_create_label_name("WHILE_L0", jump_label_name);
-  compile_add_jump_label(jump_label_name, g_ip);
+  stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
   compile(p_nd_while->nd_p_while_test_expr);
   backpatch = g_ip;
@@ -275,7 +185,7 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   g_code[g_ip++].i_jump_addr = top_of_loop_addr;
   g_code[backpatch].i_jump_addr = g_ip;
   compile_create_label_name("WHILE_L1", jump_label_name);
-  compile_add_jump_label(jump_label_name, g_ip);
+  stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
 }
 
@@ -322,10 +232,10 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 
 static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
 {
-  LABEL *p_task_label = compile_lookup_label(p_tree->nd_task_name);
+  LABEL *p_task_label = stab_lookup_label(p_tree->nd_task_name);
   if (NULL == p_task_label)
   {
-    p_task_label = compile_add_task_label(p_tree->nd_task_name, g_ip);
+    p_task_label = stab_add_task_label(p_tree->nd_task_name, g_ip);
     g_n_labels += 1;
   }
   else
@@ -398,7 +308,7 @@ void compile_check_for_undefined_tasks(void)
 
 void compile_init(void)
 {
-  compile_hash_init();
+  stab_hash_init();
   bhdr_init();
 }
 
@@ -410,6 +320,13 @@ void compile_build_header(void)
   bhdr_poke_u32_to_header(bhdr_get_bytes_added(), HEADER_SIZE_IDX);
   bhdr_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
 }
+
+uint32_t compile_write_code(FILE *fout)
+{
+  uint32_t n_instructions_written = fwrite(g_code, sizeof(INSTRUCTION), g_ip, fout);
+  return n_instructions_written;
+}
+
 
 void compile(PARSE_NODE *p_tree)
 {

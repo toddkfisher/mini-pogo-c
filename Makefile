@@ -11,7 +11,7 @@ BIN_DIR=$(ROOT_DIR)/bin
 
 # mpc: "compiler" (m)ini (p)ogo (c)ompiler
 MPC=$(BIN_DIR)/mpc
-MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o
+MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o symbol-table.o
 
 # Header printer (m)ini (p)ogo (h)eader
 MPH=$(BIN_DIR)/mph
@@ -29,7 +29,7 @@ $(MPH) : $(foreach ofile, $(MPH_OBJS), $(O_DIR)/$(ofile))
 = $(CC) -o $@ $^ $(LINKFLAGS)
 
 $(O_DIR)/mini-pogo.o : $(SRC_DIR)/mini-pogo.c
-= $(CC) $(CFLAGS) -o $@ -c $<
+= $(CC) $(CFLAGS) -DPROGRAM_NAME="mpc" -o $@ -c $<
 
 $(O_DIR)/header-print.o : $(SRC_DIR)/header-print.c
 = $(CC) $(CFLAGS) -o $@ -c $<
@@ -44,4 +44,7 @@ $(O_DIR)/parse.o: $(SRC_DIR)/parse.c $(SRC_DIR)/parse.h $(SRC_DIR)/lex-enums.txt
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/lex.o: $(SRC_DIR)/lex.c $(SRC_DIR)/lex.h $(SRC_DIR)/lex-enums.txt
+= $(CC) $(CFLAGS) -o $@ -c $<
+
+$(O_DIR)/symbol-table.o: $(SRC_DIR)/symbol-table.c $(SRC_DIR)/symbol-table.h
 = $(CC) $(CFLAGS) -o $@ -c $<
