@@ -9,3 +9,4 @@ src/sloc.awk
 bin/hp
 bin/mpc
 bin/mph
+bin/mpd

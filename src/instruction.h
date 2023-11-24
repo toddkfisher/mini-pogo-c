@@ -14,7 +14,7 @@ typedef struct INSTRUCTION {
   {
     // OP_PUSH_CONST_INT
     int32_t i_const_int;
-    // OP_POP_TO_VAR, OP_PUSH_VAR
+    // OP_POP_INT, OP_PUSH_VAR
     uint8_t i_var_name;
     // OP_JUMP
     // OP_JUMP_IF_ZERO

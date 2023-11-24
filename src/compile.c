@@ -204,6 +204,12 @@ static void compile_ND_NEGATE(PARSE_NODE *p_tree)
   g_code[g_ip++].i_opcode = OP_NEGATE;
 }
 
+static void compile_ND_ASSIGN(PARSE_NODE *p_tree)
+{
+  compile(p_tree->nd_p_assign_expr);
+  compile_OP_POP_INT(p_tree->nd_var_name);
+}
+
 static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 {
   for (LISTITEM *p_statement = p_tree->nd_p_statement_seq;
@@ -355,7 +361,7 @@ void compile(PARSE_NODE *p_tree)
         compile_ND_STATEMENT_SEQUENCE(p_tree);
         break;
       case ND_ASSIGN:
-        compile_OP_POP_INT(p_tree->nd_var_name);
+        compile_ND_ASSIGN(p_tree);
         break;
       case ND_IF:
         compile_ND_IF(p_tree);
