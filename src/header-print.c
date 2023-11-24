@@ -12,9 +12,7 @@
 int main(int argc, char **argv)
 {
   if (2 != argc)
-  {
     fprintf(stderr, "Usage: hp infile\n");
-  }
   else
   {
     FILE *fin = fopen(argv[1], "r");

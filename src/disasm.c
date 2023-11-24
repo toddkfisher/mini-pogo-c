@@ -24,9 +24,7 @@ static void disasm_print_label_from_addr(uint32_t addr,
   for (uint32_t i = 0; i < p_header->hdr_n_labels; ++i)
   {
     if (addr == p_header->hdr_labels[i].hlbl_addr)
-    {
       printf("%s ", p_header->hdr_labels[i].hlbl_name);
-    }
   }
 }
 
@@ -37,9 +35,7 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
 {
   //printf("%04x", ip);
   for (uint32_t i = 0; i < indent; ++i)
-  {
     printf(" ");
-  }
   printf("%-20s", g_opcode_names[p_instruct->i_opcode]);
   switch (p_instruct->i_opcode)
   {
@@ -60,13 +56,9 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
       break;
     case OP_PRINT_CHAR:
       if (isprint(p_instruct->i_char))
-      {
         printf("'%c' ", p_instruct->i_char);
-      }
       else
-      {
         printf("%02x ", (uint32_t) p_instruct->i_char);
-      }
       break;
     default:
       break;
@@ -77,26 +69,20 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
 int main(int argc, char **argv)
 {
   if (argc != 2)
-  {
     fprintf(stderr, "Usage: mpd file\n");
-  }
   else
   {
     HEADER *p_header;
     FILE *fin;
     if (NULL == (fin = fopen(argv[1], "r")))
-    {
       fprintf(stderr, "%s : unable to open\n", argv[1]);
-    }
     else
     {
       if (NULL != (p_header = bhdr_read(fin)))
       {
         // fin should be positioned at the first code instruction
         if (p_header->hdr_code_size_bytes != fread(g_code, 1, p_header->hdr_code_size_bytes, fin))
-        {
           fprintf(stderr, "Error reading code.\n");
-        }
         else
         {
           uint32_t n_instructions = p_header->hdr_code_size_bytes/sizeof(INSTRUCTION);
@@ -107,9 +93,7 @@ int main(int argc, char **argv)
               if (i == p_header->hdr_labels[j].hlbl_addr)
               {
                 if (p_header->hdr_labels[j].hlbl_type != 0)
-                {
                   printf("\n\nTASK ");
-                }
                 printf("%s:\n", p_header->hdr_labels[j].hlbl_name);
               }
             }

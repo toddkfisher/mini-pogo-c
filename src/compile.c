@@ -91,15 +91,11 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     else
     {
       if (p_label->lbl_addr_set)
-      {
         // Case 2.
         task_addr = p_label->lbl_addr;
-      }
       else
-      {
         // Case 3.
         stab_add_backpatch(p_label, g_ip);
-      }
     }
     compile_OP_SPAWN(task_addr);
   }
@@ -241,15 +237,11 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
     {
       g_code[p_backpatch->bp_addr].i_jump_addr = g_ip;
       if (NULL != p_prev_backpatch)
-      {
         free(p_prev_backpatch);
-      }
       p_prev_backpatch = p_backpatch;
     }
     if (NULL != p_prev_backpatch)
-    {
       free(p_prev_backpatch);
-    }
     p_task_label->lbl_p_backpatch_list = NULL;
   }
   compile(p_tree->nd_p_task_body);
@@ -277,8 +269,7 @@ void compile_check_for_undefined_tasks(void)
     {
       for (LABEL *p_label = g_hash_table[i];
            NULL != p_label;
-           p_label = p_label->lbl_p_next
-        )
+           p_label = p_label->lbl_p_next)
       {
         if (NULL != p_label->lbl_p_backpatch_list)
         {
@@ -289,9 +280,7 @@ void compile_check_for_undefined_tasks(void)
     }
   }
   if (undefined_tasks_found)
-  {
     error_exit(0);
-  }
 }
 
 void compile_init(void)

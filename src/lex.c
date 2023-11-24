@@ -11,29 +11,27 @@
 
 #include "lex.h"
 
-/*
- THEORY OF OPERATION:
-   Input is taken from char (*g_lex_input_function)(void *p_personal_data, bool peek_char), a global
-   function pointer variable. Set the function and pointer to its data with
-   lex_set_input_function(fn, void *data).  g_lex_input_function() should be ready to
-   read on the first call.  Initialization should take place prior to
-   lex_set_input_function().
-
-   -- USER-SUPPLIED lex_input_function() SHOULD:
-     1. return EOF when it exhausts it's input.
-     2. return and consume a character when passed a value of peek_char == false.
-     3. return and not consume a character when passed a value of peek_char == true.
-
-   -- SCANNING LEXICAL UNITS:
-     1. The name of the input source, typically a filename, is stored in the global variable:
-        g_input_name.
-     2. To scan the next lexical unit from the input source, call lex_scan().
-     3. The source line number and source col number are stored in the global variables:
-        g_input_line_n, g_input_column_n respectively.
-     4. The last lexical unit scanned is stored in the global variable: g_current_lex_unit
-        (type LEXICAL_UNIT).
-     5. Once end-of-file is reached, g_current_lex_unit.lex_type == LX_EOF thereafter.
-*/
+// THEORY OF OPERATION:
+//   Input is taken from char (*g_lex_input_function)(void *p_personal_data, bool peek_char), a global
+//   function pointer variable. Set the function and pointer to its data with
+//   lex_set_input_function(fn, void *data).  g_lex_input_function() should be ready to
+//   read on the first call.  Initialization should take place prior to
+//   lex_set_input_function().
+//
+//   -- USER-SUPPLIED lex_input_function() SHOULD:
+//     1. return EOF when it exhausts it's input.
+//     2. return and consume a character when passed a value of peek_char == false.
+//     3. return and not consume a character when passed a value of peek_char == true.
+//
+//   -- SCANNING LEXICAL UNITS:
+//     1. The name of the input source, typically a filename, is stored in the global variable:
+//        g_input_name.
+//     2. To scan the next lexical unit from the input source, call lex_scan().
+//     3. The source line number and source col number are stored in the global variables:
+//        g_input_line_n, g_input_column_n respectively.
+//     4. The last lexical unit scanned is stored in the global variable: g_current_lex_unit
+//        (type LEXICAL_UNIT).
+//     5. Once end-of-file is reached, g_current_lex_unit.lex_type == LX_EOF thereafter.
 
 #include <enum-str.h>
 // Lexical type (LX_..) names as strings. Ex: lex_names[LX_IDENTIFIER] == "LX_IDENTIFIER".
@@ -138,9 +136,7 @@ char lex_get_char(bool peek_char)
       g_input_column_n = 1;
     }
     else
-    {
       g_input_column_n += 1;
-    }
   }
   return ch;
 }
@@ -153,9 +149,7 @@ static bool lex_is_whitespace(char ch)
 static void lex_skip_whitespace(void)
 {
   while(lex_is_whitespace(lex_get_char(true)))
-  {
     lex_get_char(false);
-  }
 }
 
 // Keyword spelling -> keyword type.
@@ -197,9 +191,7 @@ static bool lex_scan_identifier_or_keyword(void)
   do
   {
     if (i < MAX_STR - 1)
-    {
       l_name[i] = ch;
-    }
     i += 1;
     ch = tolower(lex_get_char(false));
   } while ('_' == ch || isalnum(ch));
@@ -210,13 +202,9 @@ static bool lex_scan_identifier_or_keyword(void)
     i += 1;
   }
   if ('\0' != keyword_to_type_table[i].kw_name[0] && 0 == scmp)
-  {
     g_current_lex_unit.l_type = keyword_to_type_table[i].kw_type;
-  }
   else
-  {
     g_current_lex_unit.l_type = LX_IDENTIFIER;
-  }
   return true;
 }
 
@@ -250,9 +238,7 @@ static bool lex_scan_symbol(void)
         lex_get_char(false);
       }
       else
-      {
         retval = false;
-      }
       break;
     case '=':
       l_type = LX_EQ_SYM;
@@ -265,9 +251,7 @@ static bool lex_scan_symbol(void)
         lex_get_char(false);
       }
       else
-      {
         l_type = LX_GT_SYM;
-      }
       break;
     case '<':
       if ('=' == lex_get_char(true))
@@ -277,9 +261,7 @@ static bool lex_scan_symbol(void)
         lex_get_char(false);
       }
       else
-      {
         l_type = LX_LT_SYM;
-      }
       break;
     case '(':
       l_type = LX_LPAREN_SYM;
@@ -316,13 +298,9 @@ uint8_t lex_x_digit_value(char digit_char)
   uint8_t result;
   digit_char = tolower(digit_char);
   if (digit_char >= '0' && digit_char <= '9')
-  {
     result = digit_char - '0';
-  }
   else
-  {
     result = 10 + digit_char - 'a';
-  }
   return result;
 }
 
@@ -335,9 +313,7 @@ bool lex_scan_char(void)
     case '\\':  // '\x<hexdigit>+' or '\n' or '\t' or '\''
       ch = lex_get_char(false);  // Skip over backslash.
       if (EOF == ch)
-      {
         g_current_lex_unit.l_type = LX_ERROR;
-      }
       else
       {
         g_current_lex_unit.l_type = LX_CHAR;
@@ -358,9 +334,7 @@ bool lex_scan_char(void)
           }
           ch = lex_get_char(false);  // Skip over character following backslash.
           if ('\'' != ch)
-          {
             g_current_lex_unit.l_type = LX_ERROR;
-          }
           else
           {
             lex_get_char(false);  // Skip over closing single quote.
@@ -379,9 +353,7 @@ bool lex_scan_char(void)
             ch = lex_get_char(false);
           }
           if ('\'' != ch)
-          {
             g_current_lex_unit.l_type = LX_ERROR;
-          }
           else
           {
             g_current_lex_unit.l_type = LX_CHAR;
@@ -397,15 +369,11 @@ bool lex_scan_char(void)
       g_current_lex_unit.l_char = ch;
       ch = lex_get_char(false);
       if (EOF == ch)
-      {
         g_current_lex_unit.l_type = LX_ERROR;
-      }
       else
       {
         if ('\'' != ch)
-        {
           g_current_lex_unit.l_type = LX_ERROR;
-        }
         else
         {
           lex_get_char(false);  // Skip over single quote.
@@ -426,33 +394,21 @@ bool lex_scan(void)
   g_current_lex_unit.l_column_n = g_input_column_n - 1;
   ch = lex_get_char(true);
   if (EOF == ch)
-  {
     retval = g_current_lex_unit.l_type = LX_EOF;
-  }
   else if (isalpha(ch))
-  {
     retval = lex_scan_identifier_or_keyword();
-  }
   else if (isdigit(ch))
-  {
     retval = lex_scan_number();
-  }
   else if ('\'' == ch)
-  {
     retval = lex_scan_char();
-  }
   else if (ispunct(ch))
-  {
     retval = lex_scan_symbol();
-  }
   else
   {
     g_current_lex_unit.l_type = LX_ERROR;
     retval = false;
   }
   if (g_lex_debug_print)
-  {
     lex_print(&g_current_lex_unit);
-  }
   return retval;
 }

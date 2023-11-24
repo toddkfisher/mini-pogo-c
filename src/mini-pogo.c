@@ -121,9 +121,7 @@ char file_input(void *const p_data, bool const peek_char)
   FILE_READ *p_fr = (FILE_READ *) p_data;
   char retval;
   if (peek_char && p_fr->f_first_read_occured)
-  {
     retval = p_fr->f_current_char;
-  }
   else
   {
     retval = p_fr->f_current_char = fgetc(p_fr->f_file);
@@ -137,9 +135,7 @@ void test_lex(char *const filename)
   FILE_READ fr;
   uint32_t lex_unit_n = 0;
   if (NULL == (fr.f_file = fopen(filename, "r")))
-  {
     fprintf(stderr, "%s : not found\n", filename);
-  }
   else
   {
     fr.f_first_read_occured = false;
@@ -167,9 +163,7 @@ void scan_file_and_print(char *const filename)
 {
   FILE_READ fr;
   if (NULL == (fr.f_file = fopen(filename, "r")))
-  {
     fprintf(stderr, "%s : not found\n", filename);
-  }
   else
   {
     fr.f_first_read_occured = false;
@@ -186,18 +180,14 @@ void test_parse(char *const filename)
 {
   FILE_READ fr;
   if (NULL == (fr.f_file = fopen(filename, "r")))
-  {
     fprintf(stderr, "%s : not found\n", filename);
-  }
   else
   {
     fr.f_first_read_occured = false;
     lex_set_input_function(file_input, &fr);
     PARSE_NODE *p_node;
     if (NULL != (p_node = parse()))
-    {
       parse_print_tree(1, p_node);
-    }
     fclose(fr.f_file);
   }
 }
@@ -209,9 +199,7 @@ void compile_selectively(uint32_t compile_flags,
   FILE_READ fr;
   FILE *fout;
   if (NULL == (fr.f_file = fopen(input_filename, "r")))
-  {
     fprintf(stderr, "%s : not found\n", input_filename);
-  }
   else
   {
     PARSE_NODE *p_tree;
@@ -229,13 +217,9 @@ void compile_selectively(uint32_t compile_flags,
         compile_init();
         compile(p_tree);
         if (compile_flags & CF_HEADER)
-        {
           compile_write_header(fout);
-        }
         if (compile_flags & CF_CODE)
-        {
           compile_write_code(fout);
-        }
         fclose(fout);
         fclose(fr.f_file);
       }
@@ -248,17 +232,13 @@ void test_file_read(char *filename)
   FILE_READ fr;
   char ch;
   if (NULL == (fr.f_file = fopen(filename, "r")))
-  {
     fprintf(stderr, "%s : not found\n", filename);
-  }
   else
   {
     fr.f_first_read_occured = false;
     lex_set_input_function(file_input, &fr);
     while (EOF != (ch = lex_get_char(false)))
-    {
       putchar(ch);
-    }
   }
 }
 
@@ -300,9 +280,7 @@ char mem_input(void *p_data, bool peek_char)
   char ch = *p_mem_read->m_p_current;
   char result = ch ? ch : EOF;
   if (ch && !peek_char)
-  {
     p_mem_read->m_p_current += 1;
-  }
   return result;
 }
 
@@ -313,9 +291,7 @@ void test_mem_read(void)
   mread.m_entire_text = mread.m_p_current = test_module_3_pogo_text;
   lex_set_input_function(mem_input, &mread);
   while (EOF != (ch = lex_get_char(false)))
-  {
     putchar(ch);
-  }
 }
 
 enum
@@ -363,54 +339,38 @@ int main(int argc, char **argv)
   int argv_idx = 1;
   char *switch_params[255];
   if (argc <= 1)
-  {
     fprintf(stderr, "usage: %s [-f <file> | -m | -l <file>]\n", macstr(#PROGRAM_NAME));
-  }
   else
   {
     while (n_params >= 0 && argv_idx < argc)
     {
       n_params = cs_parse(argc, argv, g_lex_test_switches, &switch_id, &argv_idx, switch_params);
       if (n_params < 0)
-      {
         fprintf(stderr, "Unknown switch: %s\n", argv[argv_idx]);
-      }
       else
       {
         switch (switch_id)
         {
           case S_TEST_FILE_READ:
             if (n_params != 1)
-            {
               fprintf(stderr, "Usage: %s -f file\n", macstr(PROGRAM_NAME));
-            }
             else
-            {
               test_file_read(switch_params[0]);
-            }
             break;
           case S_TEST_MEM_READ:
             test_mem_read();
             break;
           case S_TEST_LEX:
             if (n_params != 1)
-            {
               fprintf(stderr, "Usage: %s -l file\n", macstr(#PROGRAM_NAME));
-            }
             else
-            {
               test_lex(switch_params[0]);
-            }
             break;
           case S_TEST_PARSE:
             if (n_params != 1)
-            {
               fprintf(stderr, "Usage: %s -p file\n", macstr(#PROGRAM_NAME));
-            }
             else
-            {
               test_parse(switch_params[0]);
-            }
             break;
           case S_LEX_PRINT:
             g_lex_debug_print = true;
@@ -419,23 +379,15 @@ int main(int argc, char **argv)
             break;
           case S_COMPILE_HEADER:
             if (n_params != 2)
-            {
               fprintf(stderr, "Usage %s --compile-header-only inputfile outputfile\n", macstr(#PROGRAM_NAME));
-            }
             else
-            {
               compile_selectively(CF_HEADER, switch_params[0], switch_params[1]);
-            }
             break;
           case S_COMPILE:
             if (n_params != 2)
-            {
               fprintf(stderr, "Usage %s --compile inputfile outputfile\n", macstr(#PROGRAM_NAME));
-            }
             else
-            {
               compile_selectively(CF_HEADER | CF_CODE , switch_params[0], switch_params[1]);
-            }
             break;
           case S_HELP:
             help();

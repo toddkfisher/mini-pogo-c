@@ -16,9 +16,7 @@ static uint32_t stab_hash(char *s)
   uint32_t char_sum = 0;
   uint32_t result;
   while (*s)
-  {
     char_sum += *s++;
-  }
   result = char_sum % HTABLE_SIZE;
   return result;
 }
@@ -26,9 +24,7 @@ static uint32_t stab_hash(char *s)
 void stab_hash_init(void)
 {
   for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
-  {
     g_hash_table[i] = NULL;
-  }
 }
 
 LABEL *stab_lookup_label(char *label)
