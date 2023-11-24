@@ -74,11 +74,10 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
   // 1) If t_k isn't in the symbol table, then we add it and g_ip for future backpatching.
   // 2) If t_k is in the symbol table and it address is set (lbl_addr_set), then we use the address and no backpatching is necessary.
   // 3) If t_k is in the symbol table and its address is not set (lbl_addr_set), then we add it and g_ip++ for future backpatching.
+  compile_OP_BEGIN_SPAWN();
   for (LISTITEM *p_task_name = p_nd_spawn->nd_p_task_names;
        NULL != p_task_name;
-       p_task_name = p_task_name->l_p_next,
-       g_ip += 1
-    )
+       p_task_name = p_task_name->l_p_next)
   {
     LABEL *p_label = stab_lookup_label(p_task_name->l_name);
     uint32_t task_addr = 0;
@@ -104,6 +103,7 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     }
     compile_OP_SPAWN(task_addr);
   }
+  compile_OP_END_SPAWN();
 }
 
 static void compile_create_label_name(char *prefix, char *name_dest)
@@ -137,12 +137,15 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   compile_create_label_name("IF_L0", jump_label_name);
   stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
-  compile(p_nd_if->nd_p_false_branch_statement_seq);
-  g_code[backpatch_1].i_jump_addr = g_ip;
-  // Add L1 for "disassembler"
-  compile_create_label_name("IF_L1", jump_label_name);
-  stab_add_jump_label(jump_label_name, g_ip);
-  g_n_labels += 1;
+  if (NULL != p_nd_if->nd_p_false_branch_statement_seq)
+  {
+    compile(p_nd_if->nd_p_false_branch_statement_seq);
+    g_code[backpatch_1].i_jump_addr = g_ip;
+    // Add L1 for "disassembler"
+    compile_create_label_name("IF_L1", jump_label_name);
+    stab_add_jump_label(jump_label_name, g_ip);
+    g_n_labels += 1;
+  }
 }
 
 static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
@@ -214,8 +217,7 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 {
   for (LISTITEM *p_statement = p_tree->nd_p_statement_seq;
        NULL != p_statement;
-       p_statement = p_statement->l_p_next
-    )
+       p_statement = p_statement->l_p_next)
   {
     compile(p_statement->l_parse_node);
   }
@@ -224,8 +226,7 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
 {
   LABEL *p_task_label = stab_lookup_label(p_tree->nd_task_name);
-  if (NULL == p_task_label)
-  {
+  if (NULL == p_task_label) {
     p_task_label = stab_add_task_label(p_tree->nd_task_name, g_ip);
     g_n_labels += 1;
   }
@@ -236,8 +237,7 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
     p_task_label->lbl_addr_set = true;
     for (BACKPATCH *p_backpatch = p_task_label->lbl_p_backpatch_list;
          NULL != p_backpatch;
-         p_backpatch = p_backpatch->bp_p_next
-      )
+         p_backpatch = p_backpatch->bp_p_next)
     {
       g_code[p_backpatch->bp_addr].i_jump_addr = g_ip;
       if (NULL != p_prev_backpatch)
@@ -253,7 +253,7 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
     p_task_label->lbl_p_backpatch_list = NULL;
   }
   compile(p_tree->nd_p_task_body);
-  g_code[g_ip++].i_opcode = OP_END_TASK;  // Every task has an implicit 'stop' at the end.
+  compile_OP_END_TASK();  // Every task has an implicit 'stop' at the end.
 }
 
 void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
@@ -262,8 +262,7 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
   g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
   for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
        NULL != p_task_declaration;
-       p_task_declaration = p_task_declaration->l_p_next
-    )
+       p_task_declaration = p_task_declaration->l_p_next)
   {
     compile(p_task_declaration->l_parse_node);
   }
