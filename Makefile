@@ -1,7 +1,7 @@
 .RECIPEPREFIX==
 
 CC=clang
-CFLAGS=-g -Wall -DDEBUG
+CFLAGS=-g -Wall -Werror -Wpedantic -DDEBUG
 LINKFLAGS=-ltkf
 
 ROOT_DIR=/home/tkf/mini-pogo-c

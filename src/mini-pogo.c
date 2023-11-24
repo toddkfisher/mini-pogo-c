@@ -202,40 +202,6 @@ void test_parse(char *const filename)
   }
 }
 
-void compile_header_only(char *input_filename,
-                         char *output_filename)
-{
-  FILE_READ fr;
-  FILE *fout;
-  if (NULL == (fr.f_file = fopen(input_filename, "r")))
-  {
-    fprintf(stderr, "%s : not found\n", input_filename);
-  }
-  else
-  {
-    PARSE_NODE *p_tree;
-    fr.f_first_read_occured = false;
-    lex_set_input_function(file_input, &fr);
-    if (NULL != (p_tree = parse()))
-    {
-      if (NULL == (fout = fopen(output_filename, "w")))
-      {
-        fprintf(stderr, "%s : cannot open\n", output_filename);
-        fclose(fr.f_file);
-      }
-      else
-      {
-        compile_init();
-        compile(p_tree);
-        compile_build_header();
-        bhdr_write(fout);
-        fclose(fout);
-        fclose(fr.f_file);
-      }
-    }
-  }
-}
-
 void compile_selectively(uint32_t compile_flags,
                          char *input_filename,
                          char *output_filename)
@@ -262,10 +228,9 @@ void compile_selectively(uint32_t compile_flags,
       {
         compile_init();
         compile(p_tree);
-        compile_build_header();
         if (compile_flags & CF_HEADER)
         {
-          bhdr_write(fout);
+          compile_write_header(fout);
         }
         if (compile_flags & CF_CODE)
         {

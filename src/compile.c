@@ -22,21 +22,6 @@ static char g_module_name[MAX_STR];
 extern LABEL *g_hash_table[HTABLE_SIZE];
 static uint32_t g_label_suffix_number = 0;
 
-static void compile_add_labels_to_header(void)
-{
-  for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
-  {
-    for (LABEL *p_label = g_hash_table[i];
-         NULL != p_label;
-         p_label = p_label->lbl_p_next)
-    {
-      bhdr_add_counted_string_to_header(p_label->lbl_name);
-      bhdr_add_u8_to_header((uint8_t) p_label->lbl_is_task);
-      bhdr_add_u32_to_header(p_label->lbl_addr);
-    }
-  }
-}
-
 void compile_OP_END_TASK(void)
 {
   g_code[g_ip++].i_opcode = OP_END_TASK;
@@ -269,7 +254,6 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_init_statements);
   g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
-  DBG_PRINT_VAR(g_ip, HEX);
   for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
        NULL != p_task_declaration;
        p_task_declaration = p_task_declaration->l_p_next
@@ -277,7 +261,6 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
   {
     compile(p_task_declaration->l_parse_node);
   }
-  DBG_PRINT_VAR(g_ip, HEX);
 }
 
 void compile_check_for_undefined_tasks(void)
@@ -309,16 +292,42 @@ void compile_check_for_undefined_tasks(void)
 void compile_init(void)
 {
   stab_hash_init();
-  bhdr_init();
+  g_ip = 0;
 }
 
-void compile_build_header(void)
+uint32_t compile_write_header(FILE *fout)
 {
-  bhdr_add_counted_string_to_header(g_module_name);
-  bhdr_poke_u32_to_header(g_ip*sizeof(INSTRUCTION), HEADER_CODE_SIZE_IDX);
-  compile_add_labels_to_header();
-  bhdr_poke_u32_to_header(bhdr_get_bytes_added(), HEADER_SIZE_IDX);
-  bhdr_poke_u32_to_header(g_n_labels, HEADER_N_LABELS_IDX);
+  uint32_t idx_label;
+  uint32_t n_bytes_header = 3*sizeof(uint32_t);
+  HEADER *p_header = NULL;
+  uint32_t result = 0;
+  if (NULL != (p_header = malloc(sizeof(HEADER) + g_n_labels*sizeof(HEADER_LABEL))))
+  {
+    strcpy(p_header->hdr_module_name, g_module_name);
+    n_bytes_header += sizeof(uint32_t) + strlen(g_module_name);
+    p_header->hdr_code_size_bytes = g_ip*sizeof(INSTRUCTION);
+    idx_label = 0;
+    for (uint32_t i = 0; i < HTABLE_SIZE; ++i)
+    {
+      for (LABEL *p_label = g_hash_table[i];
+           NULL != p_label;
+           p_label = p_label->lbl_p_next)
+      {
+        strcpy(p_header->hdr_labels[idx_label].hlbl_name, p_label->lbl_name);
+        n_bytes_header += sizeof(uint32_t) + strlen(p_label->lbl_name);
+        p_header->hdr_labels[idx_label].hlbl_type = (uint8_t) p_label->lbl_is_task;
+        n_bytes_header += sizeof(uint8_t);
+        p_header->hdr_labels[idx_label].hlbl_addr = p_label->lbl_addr;
+        n_bytes_header += sizeof(uint32_t);
+        idx_label += 1;
+      }
+    }
+    p_header->hdr_n_labels = idx_label;
+    p_header->hdr_size_bytes = n_bytes_header;
+    result = bhdr_write(fout, p_header);
+    free(p_header);
+  }
+  return result;
 }
 
 uint32_t compile_write_code(FILE *fout)
@@ -338,7 +347,6 @@ void compile(PARSE_NODE *p_tree)
         compile_ND_MODULE_DECLARATION(p_tree);
         compile_check_for_undefined_tasks();
         strcpy(g_module_name, p_tree->nd_module_name);
-        compile_build_header();
         break;
       case ND_TASK_DECLARATION:
         compile_ND_TASK_DECLARATION(p_tree);
