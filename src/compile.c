@@ -127,14 +127,14 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   g_code[g_ip++].i_jump_addr = 0;  // To be backpatched later.
   compile(p_nd_if->nd_p_true_branch_statement_seq);
   backpatch_1 = g_ip;
-  g_code[g_ip++].i_opcode = OP_JUMP;
-  g_code[backpatch_0].i_jump_addr = g_ip;
   // Add L0 for "disassembler"
   compile_create_label_name("IF_L0", jump_label_name);
   stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
+  g_code[backpatch_0].i_jump_addr = g_ip;
   if (NULL != p_nd_if->nd_p_false_branch_statement_seq)
   {
+    g_code[g_ip++].i_opcode = OP_JUMP;
     compile(p_nd_if->nd_p_false_branch_statement_seq);
     g_code[backpatch_1].i_jump_addr = g_ip;
     // Add L1 for "disassembler"

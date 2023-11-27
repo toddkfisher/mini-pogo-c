@@ -98,10 +98,8 @@ char *g_parse_node_names[] =
 static void parse_print_indent(uint32_t indent_level, char indent_char)
 {
   for (uint32_t i = 0; i < indent_level; ++i)
-  {
     for (uint32_t j = 0; j < N_SPACES_INDENT; ++j)
       putchar(indent_char);
-  }
 }
 
 void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
@@ -204,9 +202,7 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
 static void parse_optional(uint8_t lx_type)
 {
   if (lx_type == g_current_lex_unit.l_type)
-  {
     lex_scan();
-  }
 }
 
 static void parse_expect(uint8_t lx_type_expected,
@@ -340,9 +336,11 @@ static PARSE_NODE *parse_comparison_expression(void)
 {
   PARSE_NODE *retval = parse_expression();
   PARSE_NODE *p_new_root = NULL;
-  if (parse_is_comparison_operator(g_current_lex_unit.l_type)) {
+  if (parse_is_comparison_operator(g_current_lex_unit.l_type))
+  {
     p_new_root = malloc(sizeof(PARSE_NODE));
-    switch (g_current_lex_unit.l_type) {
+    switch (g_current_lex_unit.l_type)
+    {
       case LX_EQ_SYM:
         p_new_root->nd_type = ND_EQ;
         break;
@@ -377,18 +375,21 @@ static PARSE_NODE *parse_and_expression(void)
   PARSE_NODE *p_new_root = NULL;
   PARSE_NODE *p_negation = NULL;
   bool has_leading_not_kw = false;
-  while (LX_NOT_KW == g_current_lex_unit.l_type) {
+  while (LX_NOT_KW == g_current_lex_unit.l_type)
+  {
     has_leading_not_kw = !has_leading_not_kw;
     lex_scan();  // Skip past 'not'.
   }
   retval =  parse_comparison_expression();
-  if (has_leading_not_kw) {
+  if (has_leading_not_kw)
+  {
     p_negation = malloc(sizeof(PARSE_NODE));
     p_negation->nd_type = ND_NOT;
     p_negation->nd_p_expr = retval;
     retval = p_negation;
   }
-  while (LX_AND_KW == g_current_lex_unit.l_type) {
+  while (LX_AND_KW == g_current_lex_unit.l_type)
+  {
     lex_scan();  // Skip past 'and'.
     p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = ND_AND;
@@ -405,7 +406,8 @@ static PARSE_NODE *parse_or_expression(void)
   PARSE_NODE *retval = NULL;
   PARSE_NODE *p_new_root = NULL;
   retval =  parse_and_expression();
-  while (LX_OR_KW == g_current_lex_unit.l_type) {
+  while (LX_OR_KW == g_current_lex_unit.l_type)
+  {
     lex_scan();  // Skip past 'or'.
     p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = ND_OR;
@@ -451,13 +453,9 @@ static PARSE_NODE *parse_statement_sequence(void)
     p_statement->l_parse_node = parse_statement();
     parse_expect(LX_SEMICOLON_SYM, true);
     if (NULL == result->nd_p_statement_seq)
-    {
       result->nd_p_statement_seq = p_statement;
-    }
     else
-    {
       p_prev_statement->l_p_next = p_statement; // test commend
-    }
     p_prev_statement = p_statement;
   }
   return result;
@@ -473,12 +471,13 @@ static PARSE_NODE *parse_if(void)
   result->nd_p_if_test_expr = parse_or_expression();
   parse_expect(LX_THEN_KW, true);
   result->nd_p_true_branch_statement_seq = parse_statement_sequence();
-  if (LX_ELSE_KW == g_current_lex_unit.l_type) {
+  if (LX_ELSE_KW == g_current_lex_unit.l_type)
+  {
     lex_scan();  // Skip over 'else'
     result->nd_p_false_branch_statement_seq = parse_statement_sequence();
-  } else {
-    result->nd_p_false_branch_statement_seq = NULL;
   }
+  else
+    result->nd_p_false_branch_statement_seq = NULL;
   parse_expect(LX_END_KW, true);
   return result;
 }
@@ -513,13 +512,9 @@ static PARSE_NODE *parse_spawn(void)
     lex_scan();  // Skip past name.
     parse_expect(LX_SEMICOLON_SYM, true);
     if (NULL == result->nd_p_task_names)
-    {
       result->nd_p_task_names = p_current_name;
-    }
     else
-    {
       p_prev_name->l_p_next = p_current_name;
-    }
     p_prev_name = p_current_name;
   } while (LX_END_KW != g_current_lex_unit.l_type);
   lex_scan();  // Skip past 'end'.
@@ -639,13 +634,9 @@ static PARSE_NODE *parse_module_declaration(void)
     p_current_task_decl->l_p_next = NULL;
     parse_optional(LX_SEMICOLON_SYM);
     if (NULL == result->nd_p_task_decl_list)
-    {
       result->nd_p_task_decl_list = p_current_task_decl;
-    }
     else
-    {
       p_prev_task_decl->l_p_next = p_current_task_decl;
-    }
     p_prev_task_decl = p_current_task_decl;
   }
   lex_scan();  // Skip 'end' keyword.
