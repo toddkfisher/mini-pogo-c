@@ -146,10 +146,23 @@ static bool lex_is_whitespace(char ch)
   return ch > '\0'&& ch <= ' ';
 }
 
+static void lex_skip_to(char ch, bool skip_over)
+{
+  while (ch != lex_get_char(true))
+    lex_get_char(false);
+  if (skip_over && EOF != lex_get_char(true))
+    lex_get_char(false);
+}
+
 static void lex_skip_whitespace(void)
 {
+  char ch;
   while(lex_is_whitespace(lex_get_char(true)))
-    lex_get_char(false);
+  {
+    ch = lex_get_char(false);
+    if ('!' == ch)
+      lex_skip_to('\n', true);
+  }
 }
 
 // Keyword spelling -> keyword type.
