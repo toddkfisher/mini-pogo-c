@@ -104,7 +104,7 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
 
 static void compile_create_label_name(char *prefix, char *name_dest)
 {
-  sprintf(name_dest, "@%s_(%u)", prefix, g_label_suffix_number++);
+  sprintf(name_dest, "<%s_%u>", prefix, g_label_suffix_number++);
 }
 
 static void compile_ND_IF(PARSE_NODE *p_nd_if)
@@ -115,7 +115,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   // "if p then ss0 else ss1 end"
   // compiles to:
   //     compile(p)
-  //     JUMP_IF_ZERO L0     ; <- backpatch_0 location
+  //     JUMP_IF_ZERO ELSE     ; <- backpatch_0 location
   //     compile(ss0)        ; could be empty
   //     JUMP L1             ; <- backpatch_1 location
   //   L0:                   ; address for jump instruction at backpatch_0
@@ -128,7 +128,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   compile(p_nd_if->nd_p_true_branch_statement_seq);
   backpatch_1 = g_ip;
   // Add L0 for "disassembler"
-  compile_create_label_name("IF_L0", jump_label_name);
+  compile_create_label_name("ELSE", jump_label_name);
   stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
   g_code[backpatch_0].i_jump_addr = g_ip;
@@ -138,7 +138,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
     compile(p_nd_if->nd_p_false_branch_statement_seq);
     g_code[backpatch_1].i_jump_addr = g_ip;
     // Add L1 for "disassembler"
-    compile_create_label_name("IF_L1", jump_label_name);
+    compile_create_label_name("END-IF", jump_label_name);
     stab_add_jump_label(jump_label_name, g_ip);
     g_n_labels += 1;
   }
@@ -158,7 +158,7 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   //       JUMP L0
   //     L1:                 ; address for jump instruction at backpatch
   top_of_loop_addr = g_ip;
-  compile_create_label_name("WHILE_L0", jump_label_name);
+  compile_create_label_name("WHILE", jump_label_name);
   stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
   compile(p_nd_while->nd_p_while_test_expr);
@@ -168,7 +168,7 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   g_code[g_ip].i_opcode = OP_JUMP;
   g_code[g_ip++].i_jump_addr = top_of_loop_addr;
   g_code[backpatch].i_jump_addr = g_ip;
-  compile_create_label_name("WHILE_L1", jump_label_name);
+  compile_create_label_name("END-WHILE", jump_label_name);
   stab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
 }
