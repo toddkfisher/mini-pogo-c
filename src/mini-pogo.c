@@ -308,28 +308,29 @@ enum
 
 SWITCH g_lex_test_switches[] =
 {
-//  s_switch_id         s_long_name               s_short_name  s_max_parameters  s_allow_dashed_parmameters
-  { S_HELP,             "--help",                 "-h",         0,                false },
-  { S_TEST_FILE_READ,   "--file-read-test",       "-f",         1,                false },
-  { S_TEST_MEM_READ,    "--mem-read-test",        "-m",         0,                false },
-  { S_TEST_LEX,         "--lex-test",             "-l",         1,                false },
-  { S_LEX_PRINT,        "--lex-print",            "",           1,                false },
-  { S_TEST_PARSE,       "--parse-test",           "-p",         1,                false },
-  { S_COMPILE_HEADER,   "--compile-header-only",  "",           2,                false },
-  { S_COMPILE,          "--compile",              "-c",         2,                false },
+  //  s_switch_id      s_long_name                s_short_name  s_min_parameters s_max_parameters    s_usage                                             s_flags
+  { S_HELP,             "--help",                 "-h",         0,               0,                  "usage: --help",                                           CS_PARAM_ERROR_ALL },
+  { S_TEST_FILE_READ,   "--file-read-test",       "-f",         1,               1,                  "usage: --file-read-test <input file>",                    CS_PARAM_ERROR_ALL },
+  { S_TEST_MEM_READ,    "--mem-read-test",        "-m",         0,               0,                  "usage: --mem-read-test",                                  CS_PARAM_ERROR_ALL },
+  { S_TEST_LEX,         "--lex-test",             "-l",         1,               1,                  "usage: --lex-test <input file>",                          CS_PARAM_ERROR_ALL },
+  { S_LEX_PRINT,        "--lex-print",            "",           1,               1,                  "usage: --lex-print",                                      CS_PARAM_ERROR_ALL },
+  { S_TEST_PARSE,       "--parse-test",           "-p",         1,               1,                  "usage: --parse-test <input file>",                        CS_PARAM_ERROR_ALL },
+  { S_COMPILE_HEADER,   "--compile-header-only",  "",           2,               2,                  "usage: --compile-header-only <input file> <output file>", CS_PARAM_ERROR_ALL },
+  { S_COMPILE,          "--compile",              "-c",         2,               2,                  "usage: --compile <input file> <output file>",             CS_PARAM_ERROR_ALL },
   SWITCH_LIST_END
 };
 
 void help(void)
 {
   fprintf(stderr, "OPTIONS:\n");
-  fprintf(stderr, "--help | -h                                       This help message.\n");
-  fprintf(stderr, "(--file-read-test | -f) file                      Test generic read on file.\n");
-  fprintf(stderr, "--mem-read-test | -m)                             Test generic read on predefined string.\n");
-  fprintf(stderr, "(--lex-test | -l) file                            Compare file lexical units against predefined array.\n");
-  fprintf(stderr, "--lex-print file                                  Print internal representation of each lexical unit scanned from file.\n");
-  fprintf(stderr, "(--parse-test | -p) file                          Parse file.  Write parse tree outline (in org format).\n");
-  fprintf(stderr, "(--compile-header-only input-file output-file     Write header and no code to output-file.\n");
+  fprintf(stderr, "--help | -h                                            This help message.\n");
+  fprintf(stderr, "(--file-read-test | -f) <input file>                   Test generic read on file.\n");
+  fprintf(stderr, "(--mem-read-test | -m)                                 Test generic read on predefined string.\n");
+  fprintf(stderr, "(--lex-test | -l)       <input file>                   Compare file lexical units against predefined array.\n");
+  fprintf(stderr, "--lex-print file                                       Print internal representation of each lexical unit scanned from file.\n");
+  fprintf(stderr, "(--parse-test | -p)     <input file>                   Parse file.  Write parse tree outline to stdout (in org format).\n");
+  fprintf(stderr, "(--compile-header-only  <input file> <output file>     Write header and no code to output-file.\n");
+  fprintf(stderr, "(--compile <input file> <output file>                  Write header and no code to output-file.\n");
 }
 
 int main(int argc, char **argv)
@@ -344,7 +345,11 @@ int main(int argc, char **argv)
   {
     while (n_params >= 0 && argv_idx < argc)
     {
-      n_params = cs_parse(argc, argv, g_lex_test_switches, &switch_id, &argv_idx, switch_params);
+      n_params = cs_parse(argc, argv,
+                          g_lex_test_switches,
+                          &switch_id,
+                          &argv_idx,
+                          switch_params);
       if (n_params < 0)
         fprintf(stderr, "Unknown switch: %s\n", argv[argv_idx]);
       else
@@ -352,42 +357,25 @@ int main(int argc, char **argv)
         switch (switch_id)
         {
           case S_TEST_FILE_READ:
-            if (n_params != 1)
-              fprintf(stderr, "Usage: %s -f file\n", macstr(PROGRAM_NAME));
-            else
-              test_file_read(switch_params[0]);
+            test_file_read(switch_params[0]);
             break;
           case S_TEST_MEM_READ:
             test_mem_read();
             break;
           case S_TEST_LEX:
-            if (n_params != 1)
-              fprintf(stderr, "Usage: %s -l file\n", macstr(#PROGRAM_NAME));
-            else
-              test_lex(switch_params[0]);
+            test_lex(switch_params[0]);
             break;
           case S_TEST_PARSE:
-            if (n_params != 1)
-              fprintf(stderr, "Usage: %s -p file\n", macstr(#PROGRAM_NAME));
-            else
-              test_parse(switch_params[0]);
+            test_parse(switch_params[0]);
             break;
           case S_LEX_PRINT:
             g_lex_debug_print = true;
-            printf("printing lex units.\n");
-            //scan_file_and_print(switch_params[0]);
             break;
           case S_COMPILE_HEADER:
-            if (n_params != 2)
-              fprintf(stderr, "Usage %s --compile-header-only inputfile outputfile\n", macstr(#PROGRAM_NAME));
-            else
-              compile_selectively(CF_HEADER, switch_params[0], switch_params[1]);
+            compile_selectively(CF_HEADER, switch_params[0], switch_params[1]);
             break;
           case S_COMPILE:
-            if (n_params != 2)
-              fprintf(stderr, "Usage %s --compile inputfile outputfile\n", macstr(#PROGRAM_NAME));
-            else
-              compile_selectively(CF_HEADER | CF_CODE , switch_params[0], switch_params[1]);
+            compile_selectively(CF_HEADER | CF_CODE , switch_params[0], switch_params[1]);
             break;
           case S_HELP:
             help();
