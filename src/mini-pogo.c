@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <signal.h>
 #include <cmdline-switch.h>
 
@@ -323,14 +324,14 @@ SWITCH g_lex_test_switches[] =
 void help(void)
 {
   fprintf(stderr, "OPTIONS:\n");
-  fprintf(stderr, "--help | -h                                            This help message.\n");
-  fprintf(stderr, "(--file-read-test | -f) <input file>                   Test generic read on file.\n");
-  fprintf(stderr, "(--mem-read-test | -m)                                 Test generic read on predefined string.\n");
-  fprintf(stderr, "(--lex-test | -l)       <input file>                   Compare file lexical units against predefined array.\n");
-  fprintf(stderr, "--lex-print file                                       Print internal representation of each lexical unit scanned from file.\n");
-  fprintf(stderr, "(--parse-test | -p)     <input file>                   Parse file.  Write parse tree outline to stdout (in org format).\n");
-  fprintf(stderr, "(--compile-header-only  <input file> <output file>     Write header and no code to output-file.\n");
-  fprintf(stderr, "(--compile <input file> <output file>                  Write header and no code to output-file.\n");
+  fprintf(stderr, "--help | -h                                       This help message.\n");
+  fprintf(stderr, "(--file-read-test | -f) <input file>              Test generic read on file.\n");
+  fprintf(stderr, "(--mem-read-test | -m)                            Test generic read on constant string.\n");
+  fprintf(stderr, "(--lex-test | -l) <input file>                    Compare file lexical units against predefined array.\n");
+  fprintf(stderr, "--lex-print file  <input file>                    Print internal representation of each lexical unit scanned from file.\n");
+  fprintf(stderr, "(--parse-test | -p) <input file>                  Parse file.  Write parse tree outline to stdout (in org format).\n");
+  fprintf(stderr, "--compile-header-only  <input file> <output file> Write header and no code to output-file.\n");
+  fprintf(stderr, "--compile <input file> <output file>              Write header code to output-file.\n");
 }
 
 int main(int argc, char **argv)
@@ -340,7 +341,7 @@ int main(int argc, char **argv)
   int argv_idx = 1;
   char *switch_params[255];
   if (argc <= 1)
-    fprintf(stderr, "usage: %s [-f <file> | -m | -l <file>]\n", macstr(#PROGRAM_NAME));
+    help();
   else
   {
     while (n_params >= 0 && argv_idx < argc)

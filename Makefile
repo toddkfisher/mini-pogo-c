@@ -1,30 +1,42 @@
 .RECIPEPREFIX==
+.PHONY : clean
+.PHONY : all
 
+#--------------------------------------------------------------------------------
+# Compiler, linker, flags etc.
 CC=clang
 CFLAGS=-g -Wall -Werror -Wpedantic -DDEBUG
 LINKFLAGS=-ltkf
 
-ROOT_DIR=/home/tkf/mini-pogo-c
+#--------------------------------------------------------------------------------
+# File locations.
+ROOT_DIR=/home/tkf/Projects/mini-pogo-c
 SRC_DIR=$(ROOT_DIR)/src
 O_DIR=$(ROOT_DIR)/obj
 BIN_DIR=$(ROOT_DIR)/bin
+
+#--------------------------------------------------------------------------------
+# Executables
 
 # mpc: "compiler" (m)ini (p)ogo (c)ompiler
 MPC=$(BIN_DIR)/mpc
 MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o symbol-table.o
 
-# mpd : "disassembler" (m)ini (p)ogo (d)isassembler
+# mpd: "disassembler" (m)ini (p)ogo (d)isassembler
 MPD=$(BIN_DIR)/mpd
-MPD_OBJS=disasm.o binary-header.o
+MPD_OBJS=disasm.o binary-header.o module.o
 
-# Header printer (m)ini (p)ogo (h)eader
+# mph: header printer (m)ini (p)ogo (h)eader
 MPH=$(BIN_DIR)/mph
 MPH_OBJS=binary-header.o header-print.o
 
-.PHONY : clean
-.PHONY : all
+# mpr: run compiled module (m)ini (p)ogo (r)un
+MPR=$(BIN_DIR)/mpr
+MPR_OBJS=binary-header.o module.o exec.o
 
-all : $(MPC) $(MPH) $(MPD)
+#--------------------------------------------------------------------------------
+
+all : $(MPC) $(MPH) $(MPD) $(MPR)
 
 $(MPC) : $(foreach ofile, $(MPC_OBJS), $(O_DIR)/$(ofile))
 = $(CC) -o $@ $^ $(LINKFLAGS)
@@ -34,6 +46,11 @@ $(MPH) : $(foreach ofile, $(MPH_OBJS), $(O_DIR)/$(ofile))
 
 $(MPD) : $(foreach ofile, $(MPD_OBJS), $(O_DIR)/$(ofile))
 = $(CC) -o $@ $^ $(LINKFLAGS)
+
+$(MPR) : $(foreach ofile, $(MPR_OBJS), $(O_DIR)/$(ofile))
+= $(CC) -o $@ $^ $(LINKFLAGS)
+
+#--------------------------------------------------------------------------------
 
 $(O_DIR)/mini-pogo.o : $(SRC_DIR)/mini-pogo.c
 = $(CC) $(CFLAGS) -DPROGRAM_NAME="mpc" -o $@ -c $<
@@ -57,4 +74,10 @@ $(O_DIR)/lex.o: $(SRC_DIR)/lex.c $(SRC_DIR)/lex.h $(SRC_DIR)/lex-enums.txt
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/symbol-table.o: $(SRC_DIR)/symbol-table.c $(SRC_DIR)/symbol-table.h
+= $(CC) $(CFLAGS) -o $@ -c $<
+
+$(O_DIR)/module.o: $(SRC_DIR)/module.c $(SRC_DIR)/module.h
+= $(CC) $(CFLAGS) -o $@ -c $<
+
+$(O_DIR)/exec.o: $(SRC_DIR)/exec.c $(SRC_DIR)/exec.h
 = $(CC) $(CFLAGS) -o $@ -c $<

@@ -1,12 +1,6 @@
 module fib;
   init
-    ! Just print some random number
-    print_int 999;
     ! Spawn a task which will print fibonacci numbers < 10000.
-    spawn fibtask; end;
-  end;
-
-  task fibtask;
     a := 1;  ! a = Fn-2
     b := 1;  ! b = Fn-1
     print_int a;

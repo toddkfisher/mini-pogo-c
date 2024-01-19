@@ -1,2 +1,2 @@
 #!/bin/sh
-cd ~/mini-pogo-c/; make
+cd ~/Projects/mini-pogo-c/; make

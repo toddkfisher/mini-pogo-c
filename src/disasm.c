@@ -9,14 +9,13 @@
 
 #include "instruction.h"
 #include "binary-header.h"
+#include "module.h"
 
 #include <enum-str.h>
 char *g_opcode_names[] =
 {
 #include "opcode-enums.txt"
 };
-
-static INSTRUCTION g_code[MAX_CODE_SIZE];
 
 static void disasm_print_label_from_addr(uint32_t addr,
                                          HEADER *p_header)
@@ -66,6 +65,7 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
   printf("\n");
 }
 
+/*
 int main(int argc, char **argv)
 {
   if (argc != 2)
@@ -100,6 +100,43 @@ int main(int argc, char **argv)
             disasm_print_instruction(&g_code[i], i, 6, p_header);
           }
         }
+      }
+    }
+  }
+  return 0;
+}
+*/
+
+int main(int argc, char **argv)
+{
+  if (argc != 2)
+    fprintf(stderr, "Usage: mpd file\n");
+  else
+  {
+    FILE *fin;
+    MODULE *p_module;
+    if (NULL == (fin = fopen(argv[1], "r")))
+      fprintf(stderr, "%s : unable to open\n", argv[1]);
+    else
+    {
+      if (NULL != (p_module = module_read(fin)))
+      {
+        fclose(fin);
+        uint32_t n_instructions = p_module->mod_p_header->hdr_code_size_bytes/sizeof(INSTRUCTION);
+        for (uint32_t i = 0; i < n_instructions; ++i)
+        {
+          for(uint32_t j = 0; j < p_module->mod_p_header->hdr_n_labels; ++j)
+          {
+            if (i == p_module->mod_p_header->hdr_labels[j].hlbl_addr)
+            {
+              if (p_module->mod_p_header->hdr_labels[j].hlbl_type != 0)
+                printf("\n\nTASK ");
+              printf("%s:\n", p_module->mod_p_header->hdr_labels[j].hlbl_name);
+            }
+          }
+          disasm_print_instruction(&p_module->mod_p_code[i], i, 6, p_module->mod_p_header);
+        }
+        module_free(p_module);
       }
     }
   }

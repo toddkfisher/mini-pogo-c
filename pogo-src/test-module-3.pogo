@@ -10,6 +10,9 @@ module test
     spawn t0; t1; t1; end;
   end;
 
+
+
+  ! added a comment
   task t0;
     stop;
   end;
