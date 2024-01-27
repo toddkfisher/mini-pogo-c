@@ -1,8 +1,5 @@
 #pragma once
 
-#include <threads.h>
-typedef struct TASK TASK;
-
 #define STACK_SIZE 256
 #define MAX_CHANNELS_PER_TASK 10
 
@@ -12,7 +9,7 @@ enum
   ST_STOPPED
 };
 
-struct TASK
+typedef struct TASK
 {
   char task_name[MAX_STR];
   MODULE *task_p_module;  // Module that this task belongs to.
@@ -21,7 +18,8 @@ struct TASK
   uint32_t task_stack_top;
   uint32_t task_ip;  // Instruction pointer to code block
   uint32_t task_state;
-};
+
+} TASK;
 
 void exec_run_task(TASK *p_task);
 void exec_run_module_at_init_code(char *module_file_name);

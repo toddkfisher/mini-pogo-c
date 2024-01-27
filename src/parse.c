@@ -276,10 +276,23 @@ static PARSE_NODE *parse_term(void)
   PARSE_NODE *retval = parse_factor();
   PARSE_NODE *p_new_root = NULL;
   uint8_t operator;
-  while (LX_TIMES_SYM == g_current_lex_unit.l_type || LX_DIVIDE_SYM == g_current_lex_unit.l_type)
+  while (LX_TIMES_SYM == g_current_lex_unit.l_type ||
+         LX_DIVIDE_SYM == g_current_lex_unit.l_type ||
+         LX_REMAINDER_SYM == g_current_lex_unit.l_type)
   {
-    operator = LX_TIMES_SYM == g_current_lex_unit.l_type ? ND_MULTIPLY : ND_DIVIDE;
-    lex_scan();  // Skip past '*' or '/'.
+    switch (g_current_lex_unit.l_type)
+    {
+      case LX_TIMES_SYM:
+        operator = ND_MULTIPLY;
+        break;
+      case LX_DIVIDE_SYM:
+        operator = ND_DIVIDE;
+        break;
+      case LX_REMAINDER_SYM:
+        operator = ND_REMAINDER;
+        break;
+    }
+    lex_scan();  // Skip past '*' or '%' or '/'.
     p_new_root = malloc(sizeof(PARSE_NODE));
     p_new_root->nd_type = operator;
     p_new_root->nd_p_left_expr = retval;

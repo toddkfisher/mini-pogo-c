@@ -235,7 +235,7 @@ static bool lex_scan_number(void)
   return true;
 }
 
-static bool lex_scan_symbol(void)
+static bool  lex_scan_symbol(void)
 {
   bool retval = true;
   uint8_t l_type = LX_ERROR;
@@ -296,6 +296,9 @@ static bool lex_scan_symbol(void)
       break;
     case '-':
       l_type = LX_MINUS_SYM;
+      break;
+    case '%':
+      l_type = LX_REMAINDER_SYM;
       break;
     default:
       l_type = LX_ERROR;

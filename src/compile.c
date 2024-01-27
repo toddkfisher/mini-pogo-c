@@ -63,6 +63,8 @@ void compile_OP_PUSH_VAR(char var_name)
 
 static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
 {
+  uint32_t n_spawn_tasks = 0;
+  uint32_t begin_spawn_addr = g_ip;
   // "spawn t0; t1; t2; end"
   // compiles to:
   //     BEGIN_SPAWN
@@ -97,8 +99,10 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
         // Case 3.
         stab_add_backpatch(p_label, g_ip);
     }
+    n_spawn_tasks += 1;
     compile_OP_SPAWN(task_addr);
   }
+  g_code[begin_spawn_addr].i_n_spawn_tasks = n_spawn_tasks;
   compile_OP_END_SPAWN();
 }
 
@@ -109,39 +113,46 @@ static void compile_create_label_name(char *prefix, char *name_dest)
 
 static void compile_ND_IF(PARSE_NODE *p_nd_if)
 {
-  uint32_t backpatch_0;
-  uint32_t backpatch_1;
+  uint32_t condition_false_jump_addr;
+  uint32_t jump_to_end_if_addr;
   char jump_label_name[MAX_STR];
   // "if p then ss0 else ss1 end"
   // compiles to:
   //     compile(p)
-  //     JUMP_IF_ZERO ELSE     ; <- backpatch_0 location
+  //     JUMP_IF_ZERO <ELSE> ; <- condition_false_jump_addr location
   //     compile(ss0)        ; could be empty
-  //     JUMP L1             ; <- backpatch_1 location
-  //   L0:                   ; address for jump instruction at backpatch_0
+  //     JUMP END-IF         ; <- jump_to_end_if_addr location
+  //   ELSE:                 ; address for jump instruction at condition_false_jump_addr
   //     compile(ss1)        ; could be empty
-  //   L1:                   ; address for jump instruction at backpatch_1
+  //   END-IF:               ; address for jump instruction at jump_to_end_if_addr
+  // "if p then ss0 end"
+  // compiles to:
+  //     compile(p)
+  //     JUMP_IF_ZERO L0
+  //     compile(ss0)
+  //   L0:
   compile(p_nd_if->nd_p_if_test_expr);
-  backpatch_0 = g_ip;
+  condition_false_jump_addr = g_ip;
   g_code[g_ip].i_opcode = OP_JUMP_IF_ZERO;
-  g_code[g_ip++].i_jump_addr = 0;  // To be backpatched later.
+  g_code[g_ip++].i_jump_addr = 0;
   compile(p_nd_if->nd_p_true_branch_statement_seq);
-  backpatch_1 = g_ip;
-  // Add L0 for "disassembler"
-  compile_create_label_name("ELSE", jump_label_name);
-  stab_add_jump_label(jump_label_name, g_ip);
-  g_n_labels += 1;
-  g_code[backpatch_0].i_jump_addr = g_ip;
   if (NULL != p_nd_if->nd_p_false_branch_statement_seq)
   {
-    g_code[g_ip++].i_opcode = OP_JUMP;
-    compile(p_nd_if->nd_p_false_branch_statement_seq);
-    g_code[backpatch_1].i_jump_addr = g_ip;
-    // Add L1 for "disassembler"
-    compile_create_label_name("END-IF", jump_label_name);
+    jump_to_end_if_addr = g_ip;
+    g_code[g_ip].i_opcode = OP_JUMP;
+    g_code[g_ip++].i_jump_addr = 0;
+    compile_create_label_name("ELSE", jump_label_name);
     stab_add_jump_label(jump_label_name, g_ip);
     g_n_labels += 1;
+    g_code[condition_false_jump_addr].i_jump_addr = g_ip;
+    compile(p_nd_if->nd_p_false_branch_statement_seq);
   }
+  else
+    jump_to_end_if_addr = condition_false_jump_addr;
+  compile_create_label_name("END-IF", jump_label_name);
+  stab_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
+  g_code[jump_to_end_if_addr].i_jump_addr = g_ip;
 }
 
 static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
@@ -222,7 +233,8 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
 {
   LABEL *p_task_label = stab_lookup_label(p_tree->nd_task_name);
-  if (NULL == p_task_label) {
+  if (NULL == p_task_label)
+  {
     p_task_label = stab_add_task_label(p_tree->nd_task_name, g_ip);
     g_n_labels += 1;
   }
@@ -330,7 +342,6 @@ uint32_t compile_write_code(FILE *fout)
   return n_instructions_written;
 }
 
-
 void compile(PARSE_NODE *p_tree)
 {
   if (NULL != p_tree)
@@ -410,6 +421,9 @@ void compile(PARSE_NODE *p_tree)
         break;
       case ND_DIVIDE:
         compile_binary_op(OP_DIVIDE, p_tree);
+        break;
+      case ND_REMAINDER:
+        compile_binary_op(OP_REMAINDER, p_tree);
         break;
       case ND_VARIABLE:
         compile_OP_PUSH_VAR(p_tree->nd_var_name);

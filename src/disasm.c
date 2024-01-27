@@ -59,53 +59,14 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
       else
         printf("%02x ", (uint32_t) p_instruct->i_char);
       break;
+    case OP_BEGIN_SPAWN:
+      printf("%d ", p_instruct->i_n_spawn_tasks);
+      break;
     default:
       break;
   }
   printf("\n");
 }
-
-/*
-int main(int argc, char **argv)
-{
-  if (argc != 2)
-    fprintf(stderr, "Usage: mpd file\n");
-  else
-  {
-    HEADER *p_header;
-    FILE *fin;
-    if (NULL == (fin = fopen(argv[1], "r")))
-      fprintf(stderr, "%s : unable to open\n", argv[1]);
-    else
-    {
-      if (NULL != (p_header = bhdr_read(fin)))
-      {
-        // fin should be positioned at the first code instruction
-        if (p_header->hdr_code_size_bytes != fread(g_code, 1, p_header->hdr_code_size_bytes, fin))
-          fprintf(stderr, "Error reading code.\n");
-        else
-        {
-          uint32_t n_instructions = p_header->hdr_code_size_bytes/sizeof(INSTRUCTION);
-          for (uint32_t i = 0; i < n_instructions; ++i)
-          {
-            for (uint32_t j = 0; j < p_header->hdr_n_labels; ++j)
-            {
-              if (i == p_header->hdr_labels[j].hlbl_addr)
-              {
-                if (p_header->hdr_labels[j].hlbl_type != 0)
-                  printf("\n\nTASK ");
-                printf("%s:\n", p_header->hdr_labels[j].hlbl_name);
-              }
-            }
-            disasm_print_instruction(&g_code[i], i, 6, p_header);
-          }
-        }
-      }
-    }
-  }
-  return 0;
-}
-*/
 
 int main(int argc, char **argv)
 {

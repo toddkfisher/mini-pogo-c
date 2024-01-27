@@ -117,6 +117,11 @@ typedef struct
   bool f_first_read_occured;
 } FILE_READ;
 
+int blah_blah(int x)
+{
+  return x;
+}
+
 char file_input(void *const p_data, bool const peek_char)
 {
   FILE_READ *p_fr = (FILE_READ *) p_data;

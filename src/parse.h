@@ -68,7 +68,8 @@ struct PARSE_NODE
     LISTITEM *nd_p_task_names;
     // ND_OR, ND_AND
     // ND_LE, ND_LT, ND_GE, ND_GT, ND_EQ, ND_NE
-    // ND_ADD, ND_SUBTRACT, ND_MULTIPLY, ND_DIVIDE
+    // ND_ADD, ND_SUBTRACT,
+    // ND_MULTIPLY, ND_DIVIDE, ND_REMAINDER
     struct
     {
       PARSE_NODE *nd_p_left_expr;

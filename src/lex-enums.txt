@@ -35,6 +35,7 @@
     ENUM(LX_MINUS_SYM),     // "-'
     ENUM(LX_TIMES_SYM),     // "*"
     ENUM(LX_DIVIDE_SYM),    // "/"
+    ENUM(LX_REMAINDER_SYM), // "%"
     ENUM(LX_SEMICOLON_SYM), // ";"
   ENUM(LX_SYMBOL_END),
   ENUM(LX_CHAR),          // 'c' or '\x<hexdigit><hexdigit>' or '\n' or '\t' or '\''
