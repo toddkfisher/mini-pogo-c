@@ -154,13 +154,19 @@ void exec_run_task(TASK *p_task)
         else
           p_task->task_ip += 1;  // No jump
         break;
-      case OP_BEGIN_SPAWN: // nop for now
+      case OP_BEGIN_SPAWN:
+        // create spawn array (malloc).
+        // spawn array idx = 0.
         p_task->task_ip += 1;
         break;
-      case OP_SPAWN: // nop for now
+      case OP_SPAWN:
+        // pthread_create(...).
+        // spawn array[spawn idx++] = thread id
         p_task->task_ip += 1;
         break;
-      case OP_END_SPAWN: // nop for now
+      case OP_END_SPAWN:
+        // for (...) pthread_join(...)
+        // free spawn array
         p_task->task_ip += 1;
         break;
       case OP_PRINT_INT:
