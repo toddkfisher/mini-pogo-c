@@ -128,7 +128,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   // "if p then ss0 end"
   // compiles to:
   //     compile(p)
-  //     JUMP_IF_ZERO L0
+  //     JUMP_IF_ZERO L0     ; <- condition_false_jump_addr/jump_to_end_if_addr location.
   //     compile(ss0)
   //   L0:
   compile(p_nd_if->nd_p_if_test_expr);
