@@ -9,6 +9,7 @@
 
 #include "instruction.h"
 #include "binary-header.h"
+#include "exec.h"
 #include "module.h"
 
 #include <enum-str.h>

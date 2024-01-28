@@ -208,6 +208,12 @@ static void compile_ND_PRINT_INT(PARSE_NODE *p_tree)
   g_code[g_ip++].i_opcode = OP_PRINT_INT;
 }
 
+static void compile_ND_SLEEP(PARSE_NODE *p_tree)
+{
+  compile(p_tree->nd_p_expr);
+  g_code[g_ip++].i_opcode = OP_SLEEP;
+}
+
 static void compile_ND_NEGATE(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_expr);
@@ -373,6 +379,9 @@ void compile(PARSE_NODE *p_tree)
         break;
       case ND_PRINT_CHAR:
         compile_OP_PRINT_CHAR(p_tree->nd_char);
+        break;
+      case ND_SLEEP:
+        compile_ND_SLEEP(p_tree);
         break;
       case ND_SPAWN:
         compile_ND_SPAWN(p_tree);

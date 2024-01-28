@@ -52,25 +52,47 @@ $(MPR) : $(foreach ofile, $(MPR_OBJS), $(O_DIR)/$(ofile))
 
 #--------------------------------------------------------------------------------
 
-$(O_DIR)/mini-pogo.o : $(SRC_DIR)/mini-pogo.c
+# files that have text (not source code) file dependencies.
+
+$(SRC_DIR)/disasm.c : $(SRC_DIR)/opcode-enums.txt
+= touch $@
+
+$(SRC_DIR)/instruction.h : $(SRC_DIR)/opcode-enums.txt
+= touch $@
+
+$(SRC_DIR)/lex.c : $(SRC_DIR)/lex-enums.txt
+= touch $@
+
+$(SRC_DIR)/lex.h : $(SRC_DIR)/lex-enums.txt
+= touch $@
+
+$(SRC_DIR)/parse.c : $(SRC_DIR)/parse-node-enum.txt
+= touch $@
+
+$(SRC_DIR)/parse.h : $(SRC_DIR)/parse-node-enum.txt
+= touch $@
+
+# Ordinary compiles
+
+$(O_DIR)/mini-pogo.o : $(SRC_DIR)/mini-pogo.c $(SRC_DIR)/lex.h $(SRC_DIR)/parse.h $(SRC_DIR)/compile.h $(SRC_DIR)/binary-header.h
 = $(CC) $(CFLAGS) -DPROGRAM_NAME="mpc" -o $@ -c $<
 
 $(O_DIR)/header-print.o : $(SRC_DIR)/header-print.c
 = $(CC) $(CFLAGS) -o $@ -c $<
 
-$(O_DIR)/disasm.o : $(SRC_DIR)/disasm.c $(SRC_DIR)/opcode-enums.txt $(SRC_DIR)/binary-header.h
+$(O_DIR)/disasm.o : $(SRC_DIR)/disasm.c $(SRC_DIR)/instruction.h $(SRC_DIR)/binary-header.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/binary-header.o: $(SRC_DIR)/binary-header.c $(SRC_DIR)/binary-header.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
-$(O_DIR)/compile.o: $(SRC_DIR)/compile.c $(SRC_DIR)/compile.h $(SRC_DIR)/instruction.h $(SRC_DIR)/parse-node-enum.txt $(SRC_DIR)/opcode-enums.txt
+$(O_DIR)/compile.o: $(SRC_DIR)/compile.c $(SRC_DIR)/compile.h $(SRC_DIR)/instruction.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
-$(O_DIR)/parse.o: $(SRC_DIR)/parse.c $(SRC_DIR)/parse.h $(SRC_DIR)/lex-enums.txt
+$(O_DIR)/parse.o: $(SRC_DIR)/parse.c $(SRC_DIR)/parse.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
-$(O_DIR)/lex.o: $(SRC_DIR)/lex.c $(SRC_DIR)/lex.h $(SRC_DIR)/lex-enums.txt
+$(O_DIR)/lex.o: $(SRC_DIR)/lex.c $(SRC_DIR)/lex.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/symbol-table.o: $(SRC_DIR)/symbol-table.c $(SRC_DIR)/symbol-table.h

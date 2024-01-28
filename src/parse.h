@@ -62,7 +62,7 @@ struct PARSE_NODE
     };
     // ND_PRINT_CHAR
     char nd_char;
-    // ND_PRINT_INT, ND_NOT, ND_NEGATE
+    // ND_PRINT_INT, ND_NOT, ND_NEGATE, ND_SLEEP
     PARSE_NODE *nd_p_expr;
     // ND_SPAWN
     LISTITEM *nd_p_task_names;

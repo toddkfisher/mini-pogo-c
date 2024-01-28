@@ -183,6 +183,7 @@ static struct
   { "or",          LX_OR_KW         },
   { "print_char",  LX_PRINT_CHAR_KW },
   { "print_int",   LX_PRINT_INT_KW  },
+  { "sleep",       LX_SLEEP_KW      },
   { "spawn",       LX_SPAWN_KW      },
   { "stop",        LX_STOP_KW       },
   { "task",        LX_TASK_KW       },

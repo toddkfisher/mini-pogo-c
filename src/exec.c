@@ -11,10 +11,10 @@
 #include "instruction.h"
 #include "binary-header.h"
 #include "instruction.h"
-#include "module.h"
 #include "exec.h"
+#include "module.h"
 
-uint32_t g_n_tasks = 0;
+uint32_t g_n_tasks_created = 0;
 
 TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
 {
@@ -26,6 +26,9 @@ TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
   result->task_stack_top = 0;
   result->task_ip = ip;
   result->task_state = ST_STOPPED;
+  result->task_join_list_size = 0;
+  result->task_p_join_list = NULL;
+  g_n_tasks_created += 1;
   return result;
 }
 
@@ -39,16 +42,52 @@ void exec_run_module_at_init_code(char *module_file_name)
     p_module = module_read(fin);
     if (NULL != p_module)
     {
-      TASK *p_task = exec_create_task("", p_module, 0);
-      exec_run_task(p_task);
+      char init_task_name[MAX_STR];
+      sprintf(init_task_name, "%s.<init>:%u", p_module->mod_p_header->hdr_module_name, g_n_tasks_created);
+      p_module->mod_p_init_task = exec_create_task(init_task_name, p_module, 0);
+      exec_run_task(p_module->mod_p_init_task);
       module_free(p_module);
     }
     fclose(fin);
   }
 }
 
-#define PUSH(p_task, x) (p_task)->task_stack[p_task->task_stack_top++] = (x)
-#define POP(p_task) p_task->task_stack[--p_task->task_stack_top]
+#define PUSH(p_task, x) (p_task)->task_stack[(p_task)->task_stack_top++] = (x)
+#define POP(p_task) (p_task)->task_stack[--(p_task)->task_stack_top]
+#define STACK_DROP(p_task) --(p_task)->task_stack_top
+#define STACK_TOP(p_task) (p_task)->task_stack[(p_task)->task_stack_top - 1]
+
+void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
+{
+  TASK *p_child_task = NULL;
+  char child_task_name[MAX_STR];
+  uint32_t idx_join_list = STACK_TOP(p_parent_task);
+  HEADER *p_header = p_parent_task->task_p_module->mod_p_header;
+  // TODO: Need a more efficient way of finding the task name.
+  for (uint32_t i = 0; i < p_header->hdr_n_labels; ++i)
+  {
+    if (child_task_addr == p_header->hdr_labels[i].hlbl_addr)
+    {
+      sprintf(child_task_name, "%s:%u", p_header->hdr_labels[i].hlbl_name, g_n_tasks_created);
+      break;
+    }
+  }
+  p_child_task = exec_create_task(child_task_name,
+                                  p_parent_task->task_p_module,
+                                  child_task_addr);
+  p_parent_task->task_p_join_list[idx_join_list]= p_child_task;
+  STACK_TOP(p_parent_task) += 1;
+}
+
+void exec_run_join_spawn(TASK *p_task)
+{
+  uint32_t n_spawned_tasks = POP(p_task);
+  for (uint32_t i = 0; i < n_spawned_tasks; ++i)
+  {
+    printf("spawn: %s\n", p_task->task_p_join_list[i]->task_name);
+    free(p_task->task_p_join_list[i]);
+  }
+}
 
 #define BINARY_OP(operator)                                       \
   do                                                              \
@@ -155,18 +194,17 @@ void exec_run_task(TASK *p_task)
           p_task->task_ip += 1;  // No jump
         break;
       case OP_BEGIN_SPAWN:
-        // create spawn array (malloc).
-        // spawn array idx = 0.
+        p_task->task_join_list_size = p_task->task_p_module->mod_p_code[p_task->task_ip].i_n_spawn_tasks;
+        PUSH(p_task, 0);  // Use stack to store index of next task in spawn list.
+        p_task->task_p_join_list = calloc(p_task->task_join_list_size, sizeof(TASK *));
         p_task->task_ip += 1;
         break;
       case OP_SPAWN:
-        // pthread_create(...).
-        // spawn array[spawn idx++] = thread id
+        exec_add_spawn_task(p_task, p_task->task_p_module->mod_p_code[p_task->task_ip].i_task_addr);
         p_task->task_ip += 1;
         break;
       case OP_END_SPAWN:
-        // for (...) pthread_join(...)
-        // free spawn array
+        exec_run_join_spawn(p_task);
         p_task->task_ip += 1;
         break;
       case OP_PRINT_INT:
@@ -182,6 +220,13 @@ void exec_run_task(TASK *p_task)
         break;
       case OP_PUSH_VAR:
         PUSH(p_task, p_task->task_variables[p_instruction->i_var_name]);
+        p_task->task_ip += 1;
+        break;
+      case OP_SLEEP:
+        x = POP(p_task);
+        if (x < 0)
+          x = -x;
+        sleep((unsigned int) x);
         p_task->task_ip += 1;
         break;
       case OP_BAD:

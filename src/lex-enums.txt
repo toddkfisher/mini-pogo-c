@@ -11,6 +11,7 @@
     ENUM(LX_OR_KW),         // "or"
     ENUM(LX_PRINT_CHAR_KW), // "print_char"
     ENUM(LX_PRINT_INT_KW),  // "print_int"
+    ENUM(LX_SLEEP_KW),
     ENUM(LX_SPAWN_KW),      // "spawn"
     ENUM(LX_STOP_KW),       // "stop"
     ENUM(LX_TASK_KW),       // "task"

@@ -31,6 +31,7 @@
 //                           | spawn-statement
 //                           | print-int-statement
 //                           | print-char-statement
+//                           | sleep-statement
 //
 // ND_ASSIGN:
 //     assignment-statement = variable-name ':=' expression
@@ -47,6 +48,9 @@
 //
 // ND_SPAWN:
 //          spawn-statement = 'spawn' (name ';')+ 'end'
+//
+// ND_SLEEP:
+//          sleep-statement = 'sleep' expression
 //
 // ND_PRINT_INT:
 //      print-int-statement = 'print_int' expression
@@ -565,6 +569,16 @@ static PARSE_NODE *parse_print_int(void)
   return result;
 }
 
+// sleep-statement = 'sleep' expression
+static PARSE_NODE *parse_sleep(void)
+{
+  PARSE_NODE *result = malloc(sizeof(PARSE_NODE));
+  lex_scan();  // Skip past 'sleep'.
+  result->nd_type = ND_SLEEP;
+  result->nd_p_expr = parse_or_expression();
+  return result;
+}
+
 // statement =
 //             assignment-statement
 //           | if-statement
@@ -573,6 +587,7 @@ static PARSE_NODE *parse_print_int(void)
 //           | spawn-statement
 //           | print-int-statement
 //           | print-char-statement
+//           | sleep-statement
 static PARSE_NODE *parse_statement(void)
 {
   PARSE_NODE *result = NULL;
@@ -596,7 +611,10 @@ static PARSE_NODE *parse_statement(void)
   case LX_PRINT_INT_KW:
       result = parse_print_int();
       break;
-    case LX_PRINT_CHAR_KW:
+    case LX_SLEEP_KW:
+      result = parse_sleep();
+      break;
+  case LX_PRINT_CHAR_KW:
       result = parse_print_char();
       break;
     default:

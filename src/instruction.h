@@ -26,9 +26,8 @@ typedef struct INSTRUCTION {
     uint32_t i_task_addr;
     // OP_PRINT_CHAR
     uint8_t i_char;
-    // OP_ADD, OP_SUBTRACT, OP_MULTIPLY, OP_DIVIDE, OP_REMAINDER,
-    // OP_GT, OP_LT, OP_GE, OP_LE, OP_EQ, OP_NE,
-    // OP_END_SPAWN, OP_PRINT_INT, OP_END_TASK
+    // OP_ADD, OP_SUBTRACT, OP_MULTIPLY,  OP_DIVIDE, OP_REMAINDER, OP_GT, OP_LT,
+    // OP_GE, OP_LE, OP_EQ, OP_NE, OP_END_SPAWN, OP_PRINT_INT, OP_END_TASK, OP_SLEEP
     //
     // no operands
   };
