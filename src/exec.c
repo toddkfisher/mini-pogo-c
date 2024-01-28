@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <threads.h>
+#include <pthread.h>
 #include <util.h>
 
 #include "instruction.h"
@@ -13,6 +13,8 @@
 #include "instruction.h"
 #include "exec.h"
 #include "module.h"
+
+void *exec_run_task(void *pv_task);
 
 uint32_t g_n_tasks_created = 0;
 
@@ -30,26 +32,6 @@ TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
   result->task_p_join_list = NULL;
   g_n_tasks_created += 1;
   return result;
-}
-
-// Load module and run it's 'init' code block.
-void exec_run_module_at_init_code(char *module_file_name)
-{
-  FILE *fin = fopen(module_file_name, "r");
-  MODULE *p_module;
-  if (NULL != fin)
-  {
-    p_module = module_read(fin);
-    if (NULL != p_module)
-    {
-      char init_task_name[MAX_STR];
-      sprintf(init_task_name, "%s.<init>:%u", p_module->mod_p_header->hdr_module_name, g_n_tasks_created);
-      p_module->mod_p_init_task = exec_create_task(init_task_name, p_module, 0);
-      exec_run_task(p_module->mod_p_init_task);
-      module_free(p_module);
-    }
-    fclose(fin);
-  }
 }
 
 #define PUSH(p_task, x) (p_task)->task_stack[(p_task)->task_stack_top++] = (x)
@@ -79,14 +61,23 @@ void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
   STACK_TOP(p_parent_task) += 1;
 }
 
-void exec_run_join_spawn(TASK *p_task)
+void exec_run_join_spawn(TASK *p_parent_task)
 {
-  uint32_t n_spawned_tasks = POP(p_task);
+  uint32_t n_spawned_tasks = POP(p_parent_task);
   for (uint32_t i = 0; i < n_spawned_tasks; ++i)
   {
-    printf("spawn: %s\n", p_task->task_p_join_list[i]->task_name);
-    free(p_task->task_p_join_list[i]);
+    pthread_create(&(p_parent_task->task_p_join_list[i]->task_thread_id),
+                   NULL,
+                   exec_run_task,
+                   p_parent_task->task_p_join_list[i]);
   }
+  for (uint32_t i = 0; i < n_spawned_tasks; ++i)
+    pthread_join(p_parent_task->task_p_join_list[i]->task_thread_id, NULL);
+  for (uint32_t i = 0; i < n_spawned_tasks; ++i)
+  {
+    free(p_parent_task->task_p_join_list[i]);
+  }
+  free(p_parent_task->task_p_join_list);
 }
 
 #define BINARY_OP(operator)                                       \
@@ -97,10 +88,11 @@ void exec_run_join_spawn(TASK *p_task)
     PUSH(p_task, y operator x);                                   \
   } while (0)
 
-void exec_run_task(TASK *p_task)
+void *exec_run_task(void *pv_task)
 {
   int32_t x;
   int32_t y;
+  TASK *p_task = (TASK *) pv_task;
   p_task->task_state = ST_RUNNING;
   while (ST_STOPPED != p_task->task_state)
   {
@@ -236,6 +228,31 @@ void exec_run_task(TASK *p_task)
       default:
         break;
     }
+  }
+  pthread_exit(NULL);
+}
+
+// Load module and run it's 'init' code block.
+void exec_run_module_at_init_code(char *module_file_name)
+{
+  FILE *fin = fopen(module_file_name, "r");
+  MODULE *p_module;
+  if (NULL != fin)
+  {
+    p_module = module_read(fin);
+    if (NULL != p_module)
+    {
+      char init_task_name[MAX_STR];
+      sprintf(init_task_name, "%s.<init>:%u", p_module->mod_p_header->hdr_module_name, g_n_tasks_created);
+      p_module->mod_p_init_task = exec_create_task(init_task_name, p_module, 0);
+      pthread_create(&(p_module->mod_p_init_task->task_thread_id),
+                     NULL,
+                     exec_run_task,
+                     p_module->mod_p_init_task);
+      pthread_join(p_module->mod_p_init_task->task_thread_id, NULL);
+      module_free(p_module);
+    }
+    fclose(fin);
   }
 }
 

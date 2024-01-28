@@ -48,7 +48,7 @@ $(MPD) : $(foreach ofile, $(MPD_OBJS), $(O_DIR)/$(ofile))
 = $(CC) -o $@ $^ $(LINKFLAGS)
 
 $(MPR) : $(foreach ofile, $(MPR_OBJS), $(O_DIR)/$(ofile))
-= $(CC) -o $@ $^ $(LINKFLAGS)
+= $(CC) -o $@ $^ $(LINKFLAGS) -lpthread
 
 #--------------------------------------------------------------------------------
 

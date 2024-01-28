@@ -22,6 +22,7 @@ typedef struct MODULE MODULE;
 
 struct TASK
 {
+  pthread_t task_thread_id;
   char task_name[MAX_STR];
   MODULE *task_p_module;               // Module that this task belongs to.
   int32_t task_variables[26];          // A-Z cheesy variables per task.
@@ -33,6 +34,3 @@ struct TASK
   uint32_t task_join_list_size;
   TASK **task_p_join_list;             // List of tasks that we're blocked on (join).
 };
-
-void exec_run_task(TASK *p_task);
-void exec_run_module_at_init_code(char *module_file_name);
