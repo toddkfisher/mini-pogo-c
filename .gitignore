@@ -11,3 +11,5 @@ bin/mpc
 bin/mph
 bin/mpd
 bin/mpr
+*.pmod
+*.cpogo

@@ -204,10 +204,7 @@ void *exec_run_task(void *pv_task)
         p_task->task_ip += 1;
         break;
       case OP_PRINT_CHAR:
-        if (isprint(p_instruction->i_char))
-          printf("%c", p_instruction->i_char);
-        else
-          printf("%02x", p_instruction->i_char);
+        printf("%c", p_instruction->i_char);
         p_task->task_ip += 1;
         break;
       case OP_PUSH_VAR:
