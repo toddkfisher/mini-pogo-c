@@ -36,7 +36,7 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
   //printf("%04x", ip);
   for (uint32_t i = 0; i < indent; ++i)
     printf(" ");
-  printf("%-20s", g_opcode_names[p_instruct->i_opcode]);
+  printf("%08x : %-30s", ip, g_opcode_names[p_instruct->i_opcode]);
   switch (p_instruct->i_opcode)
   {
     case OP_PUSH_CONST_INT:
@@ -49,6 +49,8 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
     case OP_JUMP:
     case OP_JUMP_IF_ZERO:
     case OP_JUMP_IF_NONZERO:
+    case OP_TEST_AND_JUMP_IF_ZERO:
+    case OP_TEST_AND_JUMP_IF_NONZERO:
       disasm_print_label_from_addr(p_instruct->i_jump_addr, p_header);
       break;
     case OP_SPAWN:
@@ -87,7 +89,8 @@ int main(int argc, char **argv)
         uint32_t n_instructions = p_module->mod_p_header->hdr_code_size_bytes/sizeof(INSTRUCTION);
         for (uint32_t i = 0; i < n_instructions; ++i)
         {
-          for(uint32_t j = 0; j < p_module->mod_p_header->hdr_n_labels; ++j)
+          uint32_t j = 0;
+          do
           {
             if (i == p_module->mod_p_header->hdr_labels[j].hlbl_addr)
             {
@@ -95,7 +98,9 @@ int main(int argc, char **argv)
                 printf("\n\nTASK ");
               printf("%s:\n", p_module->mod_p_header->hdr_labels[j].hlbl_name);
             }
-          }
+            j += 1;
+          } while (j < p_module->mod_p_header->hdr_n_labels &&
+                   p_module->mod_p_header->hdr_labels[j - 1].hlbl_addr != i);
           disasm_print_instruction(&p_module->mod_p_code[i], i, 6, p_module->mod_p_header);
         }
         module_free(p_module);

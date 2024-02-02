@@ -19,6 +19,8 @@ typedef struct INSTRUCTION {
     // OP_JUMP
     // OP_JUMP_IF_ZERO
     // OP_JUMP_IF_NONZERO
+    // OP_TEST_AND_JUMP_IF_ZERO)
+    // OP_TEST_AND_JUMP_IF_NONZERO)
     uint32_t i_jump_addr;
     // OP_BEGIN_SPAWN
     uint32_t i_n_spawn_tasks;

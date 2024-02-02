@@ -124,7 +124,7 @@ void lex_set_input_function(INPUT_FUNCTION input_function, void *data_pointer)
 }
 
 // This function is a wrapper around g_lex_input_function() so that our code isn't
-// littered with checks for newline and setting column/line numbers.  It's in one place here.
+// littered with checks for newline and setting column/line numbers.  It's in one place here:
 char lex_get_char(bool peek_char)
 {
   char ch = (*g_lex_input_function)(g_input_data, peek_char);

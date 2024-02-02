@@ -24,6 +24,8 @@ typedef struct LISTITEM
 struct PARSE_NODE
 {
   uint8_t nd_type;
+  uint32_t nd_src_line;
+  uint32_t nd_src_col;
   union
   {
     // ND_MODULE

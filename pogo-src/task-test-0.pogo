@@ -9,7 +9,8 @@ module task_test;
 
   task t0
     while x < 5 do
-      print_int 0;
+      print_char 'a';
+      print_char '\n';
       sleep 1; ! seconds
       x := x + 1;
     end;

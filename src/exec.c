@@ -14,6 +14,11 @@
 #include "exec.h"
 #include "module.h"
 
+#define PUSH(p_task, x) (p_task)->task_stack[(p_task)->task_stack_top++] = (x)
+#define POP(p_task) (p_task)->task_stack[--(p_task)->task_stack_top]
+#define STACK_TOP(p_task) (p_task)->task_stack[(p_task)->task_stack_top - 1]
+#define STACK_DROP(p_task) --((p_task)->task_stack_top)
+
 void *exec_run_task(void *pv_task);
 
 uint32_t g_n_tasks_created = 0;
@@ -33,11 +38,6 @@ TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
   g_n_tasks_created += 1;
   return result;
 }
-
-#define PUSH(p_task, x) (p_task)->task_stack[(p_task)->task_stack_top++] = (x)
-#define POP(p_task) (p_task)->task_stack[--(p_task)->task_stack_top]
-#define STACK_DROP(p_task) --(p_task)->task_stack_top
-#define STACK_TOP(p_task) (p_task)->task_stack[(p_task)->task_stack_top - 1]
 
 void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
 {
@@ -217,6 +217,24 @@ void *exec_run_task(void *pv_task)
           x = -x;
         sleep((unsigned int) x);
         p_task->task_ip += 1;
+        break;
+      case OP_TEST_AND_JUMP_IF_ZERO:
+        if (0 == STACK_TOP(p_task))
+          p_task->task_ip = p_task->task_p_module->mod_p_code[p_task->task_ip].i_jump_addr;
+        else
+        {
+          STACK_DROP(p_task);
+          p_task->task_ip += 1;
+        }
+        break;
+      case OP_TEST_AND_JUMP_IF_NONZERO:
+        if (0 != STACK_TOP(p_task))
+          p_task->task_ip = p_task->task_p_module->mod_p_code[p_task->task_ip].i_jump_addr;
+        else
+        {
+          STACK_DROP(p_task);
+          p_task->task_ip += 1;
+        }
         break;
       case OP_BAD:
         printf("OP_BAD\n");

@@ -1,3 +1,5 @@
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -117,12 +119,7 @@ typedef struct
   bool f_first_read_occured;
 } FILE_READ;
 
-int blah_blah(int x)
-{
-  return x;
-}
-
-char file_input(void *const p_data, bool const peek_char)
+char file_input(void *p_data, bool const peek_char)
 {
   FILE_READ *p_fr = (FILE_READ *) p_data;
   char retval;
@@ -134,6 +131,19 @@ char file_input(void *const p_data, bool const peek_char)
     p_fr->f_first_read_occured = true;
   }
   return retval;
+}
+
+uint32_t file_size(void *p_data)
+{
+  int fd = fileno(((FILE_READ *) p_data)->f_file);
+  struct stat statbuf;
+  fstat(fd, &statbuf);
+  return (uint32_t) statbuf.st_size;
+}
+
+void file_reset_to_beginning(void *p_data)
+{
+  fseek(((FILE_READ *) p_data)->f_file, 0, SEEK_SET);
 }
 
 void test_lex(char *const filename)
@@ -375,6 +385,7 @@ int main(int argc, char **argv)
             test_parse(switch_params[0]);
             break;
           case S_LEX_PRINT:
+            // FIXME: actually *do* something here.
             g_lex_debug_print = true;
             break;
           case S_COMPILE_HEADER:

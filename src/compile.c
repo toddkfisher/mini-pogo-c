@@ -22,6 +22,11 @@ static char g_module_name[MAX_STR];
 extern LABEL *g_hash_table[HTABLE_SIZE];
 static uint32_t g_label_suffix_number = 0;
 
+static void compile_create_label_name(char *prefix, char *name_dest)
+{
+  sprintf(name_dest, "<%s_%u>", prefix, g_label_suffix_number++);
+}
+
 void compile_OP_END_TASK(void)
 {
   g_code[g_ip++].i_opcode = OP_END_TASK;
@@ -106,9 +111,46 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
   compile_OP_END_SPAWN();
 }
 
-static void compile_create_label_name(char *prefix, char *name_dest)
+static void compile_ND_AND(PARSE_NODE *p_tree)
 {
-  sprintf(name_dest, "<%s_%u>", prefix, g_label_suffix_number++);
+  char jump_label_name[MAX_STR];
+  uint32_t backpatch;
+  // left 'and' right
+  // compiles to:
+  //    compile(left)
+  //    OP_TEST_AND_JUMP_IF_ZERO L0
+  //    comple(right)
+  //  L0:
+  compile(p_tree->nd_p_left_expr);
+  backpatch = g_ip;
+  g_code[g_ip].i_opcode = OP_TEST_AND_JUMP_IF_ZERO;
+  g_code[g_ip++].i_jump_addr = 0;
+  compile(p_tree->nd_p_right_expr);
+  compile_create_label_name("AND-SHORT-CIRCUIT", jump_label_name);
+  stab_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
+  g_code[backpatch].i_jump_addr = g_ip;
+}
+
+static void compile_ND_OR(PARSE_NODE *p_tree)
+{
+  char jump_label_name[MAX_STR];
+  uint32_t backpatch;
+  // left 'or' right
+  // compiles to:
+  //    compile(left)
+  //    OP_TEST_AND_JUMP_IF_NONZERO L0
+  //    comple(right)
+  //  L0:
+  compile(p_tree->nd_p_left_expr);
+  backpatch = g_ip;
+  g_code[g_ip].i_opcode = OP_TEST_AND_JUMP_IF_NONZERO;
+  g_code[g_ip++].i_jump_addr = 0;
+  compile(p_tree->nd_p_right_expr);
+  compile_create_label_name("OR-SHORT-CIRCUIT", jump_label_name);
+  stab_add_jump_label(jump_label_name, g_ip);
+  g_n_labels += 1;
+  g_code[backpatch].i_jump_addr = g_ip;
 }
 
 static void compile_ND_IF(PARSE_NODE *p_nd_if)
@@ -348,6 +390,8 @@ uint32_t compile_write_code(FILE *fout)
   return n_instructions_written;
 }
 
+//uint32_t complie_write_source(FILE *fout)
+
 void compile(PARSE_NODE *p_tree)
 {
   if (NULL != p_tree)
@@ -390,10 +434,10 @@ void compile(PARSE_NODE *p_tree)
         compile_OP_END_TASK();
         break;
       case ND_OR:
-        compile_binary_op(OP_OR, p_tree);
+        compile_ND_OR(p_tree);
         break;
       case ND_AND:
-        compile_binary_op(OP_AND, p_tree);
+        compile_ND_AND(p_tree);
         break;
       case ND_NOT:
         compile_binary_op(OP_NOT, p_tree);
