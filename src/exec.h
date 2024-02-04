@@ -6,9 +6,10 @@
 // Task states.
 enum
 {
-  ST_RUNNING,
-  ST_STOPPED,
-  ST_BLOCKED
+  ST_STOPPED = 0x00,
+  ST_RUNNING = 0x01,
+  ST_SLEEPING = 0x02,
+  ST_BLOCKED = 0x03
 };
 
 // Block flags
@@ -31,6 +32,5 @@ struct TASK
   uint32_t task_ip;                    // Instruction pointer to module code block.
   uint32_t task_state;
   uint32_t task_state_flags;
-  uint32_t task_join_list_size;
-  TASK **task_p_join_list;             // List of tasks that we're blocked on (join).
+  uint32_t task_n_spawn_tasks;
 };

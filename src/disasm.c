@@ -101,7 +101,7 @@ int main(int argc, char **argv)
             j += 1;
           } while (j < p_module->mod_p_header->hdr_n_labels &&
                    p_module->mod_p_header->hdr_labels[j - 1].hlbl_addr != i);
-          disasm_print_instruction(&p_module->mod_p_code[i], i, 6, p_module->mod_p_header);
+          disasm_print_instruction(&p_module->mod_p_code[i], i, 2, p_module->mod_p_header);
         }
         module_free(p_module);
       }
