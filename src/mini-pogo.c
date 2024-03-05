@@ -4,16 +4,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <signal.h>
 #include <cmdline-switch.h>
+
 
 #include "lex.h"
 #include "parse.h"
 #include "compile.h"
 #include "binary-header.h"
 
+
 #define macstr(x) #x
+
 
 enum COMPILE_FLAGS
 {
@@ -22,11 +26,13 @@ enum COMPILE_FLAGS
   CF_CODE = 2
 };
 
+
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
 extern bool g_lex_debug_print;  // Print lexical units as they are scanned.
+
 
 // Sequence of expected lexical types from test-module-3.pogo.
 uint8_t test_module_3_pogo_lex_types[] =
@@ -111,27 +117,40 @@ uint8_t test_module_3_pogo_lex_types[] =
   LX_EOF
 };
 
+
 // Data block for file_input().
 typedef struct
 {
   FILE *f_file;
-  char f_current_char;
-  bool f_first_read_occured;
+  char f_file_name[MAX_STR + 1];
+  bool f_eof_reached;
 } FILE_READ;
+
+
+void file_input_init(FILE_READ *p_fr)
+{
+  p_fr->f_file = NULL;
+  zero_mem(p_fr->f_file_name, MAX_STR + 1);
+  p_fr->f_eof_reached = false;
+}
+
 
 char file_input(void *p_data, bool const peek_char)
 {
   FILE_READ *p_fr = (FILE_READ *) p_data;
-  char retval;
-  if (peek_char && p_fr->f_first_read_occured)
-    retval = p_fr->f_current_char;
+  char result;
+  if (p_fr->f_eof_reached)
+    result = EOF;
   else
   {
-    retval = p_fr->f_current_char = fgetc(p_fr->f_file);
-    p_fr->f_first_read_occured = true;
+    result = fgetc(p_fr->f_file);
+    p_fr->f_eof_reached = (EOF == result);
+    if (peek_char)
+      ungetc(result, p_fr->f_file);
   }
-  return retval;
+  return result;
 }
+
 
 uint32_t file_size(void *p_data)
 {
@@ -141,20 +160,23 @@ uint32_t file_size(void *p_data)
   return (uint32_t) statbuf.st_size;
 }
 
+
 void file_reset_to_beginning(void *p_data)
 {
   fseek(((FILE_READ *) p_data)->f_file, 0, SEEK_SET);
 }
 
+
 void test_lex(char *const filename)
 {
   FILE_READ fr;
   uint32_t lex_unit_n = 0;
-  if (NULL == (fr.f_file = fopen(filename, "r")))
+  file_input_init(&fr);
+  if (!(fr.f_file = fopen(filename, "r")))
     fprintf(stderr, "%s : not found\n", filename);
   else
   {
-    fr.f_first_read_occured = false;
+    strcpy(fr.f_file_name, filename);
     lex_set_input_function(file_input, &fr);
     do
     {
@@ -175,14 +197,16 @@ void test_lex(char *const filename)
   }
 }
 
+
 void scan_file_and_print(char *const filename)
 {
   FILE_READ fr;
-  if (NULL == (fr.f_file = fopen(filename, "r")))
+  file_input_init(&fr);
+  if (!(fr.f_file = fopen(filename, "r")))
     fprintf(stderr, "%s : not found\n", filename);
   else
   {
-    fr.f_first_read_occured = false;
+    strcpy(fr.f_file_name, filename);
     lex_set_input_function(file_input, &fr);
     do
     {
@@ -192,21 +216,24 @@ void scan_file_and_print(char *const filename)
   }
 }
 
+
 void test_parse(char *const filename)
 {
   FILE_READ fr;
-  if (NULL == (fr.f_file = fopen(filename, "r")))
+  file_input_init(&fr);
+  if (!(fr.f_file = fopen(filename, "r")))
     fprintf(stderr, "%s : not found\n", filename);
   else
   {
-    fr.f_first_read_occured = false;
+    strcpy(fr.f_file_name, filename);
     lex_set_input_function(file_input, &fr);
     PARSE_NODE *p_node;
-    if (NULL != (p_node = parse()))
+    if (p_node = parse())
       parse_print_tree(1, p_node);
     fclose(fr.f_file);
   }
 }
+
 
 void compile_selectively(uint32_t compile_flags,
                          char *input_filename,
@@ -214,16 +241,17 @@ void compile_selectively(uint32_t compile_flags,
 {
   FILE_READ fr;
   FILE *fout;
-  if (NULL == (fr.f_file = fopen(input_filename, "r")))
+  file_input_init(&fr);
+  if (!(fr.f_file = fopen(input_filename, "r")))
     fprintf(stderr, "%s : not found\n", input_filename);
   else
   {
     PARSE_NODE *p_tree;
-    fr.f_first_read_occured = false;
+    strcpy(fr.f_file_name, input_filename);
     lex_set_input_function(file_input, &fr);
-    if (NULL != (p_tree = parse()))
+    if (p_tree = parse())
     {
-      if (NULL == (fout = fopen(output_filename, "w")))
+      if (!(fout = fopen(output_filename, "w")))
       {
         fprintf(stderr, "%s : cannot open\n", output_filename);
         fclose(fr.f_file);
@@ -243,20 +271,23 @@ void compile_selectively(uint32_t compile_flags,
   }
 }
 
+
 void test_file_read(char *filename)
 {
   FILE_READ fr;
   char ch;
-  if (NULL == (fr.f_file = fopen(filename, "r")))
+  file_input_init(&fr);
+  if (!(fr.f_file = fopen(filename, "r")))
     fprintf(stderr, "%s : not found\n", filename);
   else
   {
-    fr.f_first_read_occured = false;
+    strcpy(fr.f_file_name, filename);
     lex_set_input_function(file_input, &fr);
     while (EOF != (ch = lex_get_char(false)))
       putchar(ch);
   }
 }
+
 
 char *test_module_3_pogo_text =
   "module test\n"
@@ -283,12 +314,14 @@ char *test_module_3_pogo_text =
   "  end;\n"
   "end;\n";
 
+
 // Data block for in-memory input.
 typedef struct MEM_READ
 {
   char *m_entire_text;
   char *m_p_current;
 } MEM_READ;
+
 
 char mem_input(void *p_data, bool peek_char)
 {
@@ -300,6 +333,7 @@ char mem_input(void *p_data, bool peek_char)
   return result;
 }
 
+
 void test_mem_read(void)
 {
   MEM_READ mread;
@@ -309,6 +343,7 @@ void test_mem_read(void)
   while (EOF != (ch = lex_get_char(false)))
     putchar(ch);
 }
+
 
 enum
 {
@@ -321,6 +356,7 @@ enum
   S_COMPILE_HEADER,
   S_COMPILE
 };
+
 
 SWITCH g_lex_test_switches[] =
 {
@@ -336,6 +372,7 @@ SWITCH g_lex_test_switches[] =
   SWITCH_LIST_END
 };
 
+
 void help(void)
 {
   fprintf(stderr, "OPTIONS:\n");
@@ -348,6 +385,7 @@ void help(void)
   fprintf(stderr, "--compile-header-only  <input file> <output file> Write header and no code to output-file.\n");
   fprintf(stderr, "--compile <input file> <output file>              Write header code to output-file.\n");
 }
+
 
 int main(int argc, char **argv)
 {
@@ -385,7 +423,7 @@ int main(int argc, char **argv)
             test_parse(switch_params[0]);
             break;
           case S_LEX_PRINT:
-            // FIXME: actually *do* something here.
+            scan_file_and_print(switch_params[0]);
             g_lex_debug_print = true;
             break;
           case S_COMPILE_HEADER:

@@ -7,10 +7,13 @@
 #include <ctype.h>
 #include <util.h>
 
+
+#include "lex.h"
 #include "instruction.h"
 #include "binary-header.h"
 #include "exec.h"
 #include "module.h"
+
 
 #include <enum-str.h>
 char *g_opcode_names[] =
@@ -18,15 +21,17 @@ char *g_opcode_names[] =
 #include "opcode-enums.txt"
 };
 
+
 static void disasm_print_label_from_addr(uint32_t addr,
                                          HEADER *p_header)
 {
   for (uint32_t i = 0; i < p_header->hdr_n_labels; ++i)
   {
-    if (addr == p_header->hdr_labels[i].hlbl_addr)
-      printf("%s ", p_header->hdr_labels[i].hlbl_name);
+    if (addr == p_header->hdr_p_label_list[i].hlbl_addr)
+      printf("%s ", p_header->hdr_p_label_list[i].hlbl_name);
   }
 }
+
 
 static void disasm_print_instruction(INSTRUCTION *p_instruct,
                                      uint32_t ip,
@@ -65,11 +70,16 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
     case OP_BEGIN_SPAWN:
       printf("%d ", p_instruct->i_n_spawn_tasks);
       break;
+    case OP_PRINT_STRING:
+      printf("%u : ", p_instruct->i_string_idx);
+      lex_print_string_escaped(p_header->hdr_p_string_list[p_instruct->i_string_idx]);
+      break;
     default:
       break;
   }
   printf("\n");
 }
+
 
 int main(int argc, char **argv)
 {
@@ -79,11 +89,11 @@ int main(int argc, char **argv)
   {
     FILE *fin;
     MODULE *p_module;
-    if (NULL == (fin = fopen(argv[1], "r")))
+    if (!(fin = fopen(argv[1], "r")))
       fprintf(stderr, "%s : unable to open\n", argv[1]);
     else
     {
-      if (NULL != (p_module = module_read(fin)))
+      if (p_module = module_read(fin))
       {
         fclose(fin);
         uint32_t n_instructions = p_module->mod_p_header->hdr_code_size_bytes/sizeof(INSTRUCTION);
@@ -92,15 +102,15 @@ int main(int argc, char **argv)
           uint32_t j = 0;
           do
           {
-            if (i == p_module->mod_p_header->hdr_labels[j].hlbl_addr)
+            if (i == p_module->mod_p_header->hdr_p_label_list[j].hlbl_addr)
             {
-              if (p_module->mod_p_header->hdr_labels[j].hlbl_type != 0)
+              if (p_module->mod_p_header->hdr_p_label_list[j].hlbl_type != 0)
                 printf("\n\nTASK ");
-              printf("%s:\n", p_module->mod_p_header->hdr_labels[j].hlbl_name);
+              printf("%s:\n", p_module->mod_p_header->hdr_p_label_list[j].hlbl_name);
             }
             j += 1;
-          } while (j < p_module->mod_p_header->hdr_n_labels &&
-                   p_module->mod_p_header->hdr_labels[j - 1].hlbl_addr != i);
+          } while (j < p_module->mod_p_header->hdr_n_labels); // &&
+                   // p_module->mod_p_header->hdr_p_label_list[j - 1].hlbl_addr != i);
           disasm_print_instruction(&p_module->mod_p_code[i], i, 2, p_module->mod_p_header);
         }
         module_free(p_module);

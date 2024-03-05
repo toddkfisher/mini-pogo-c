@@ -1,22 +1,26 @@
   // Keywords go between LX_KEYWORD_BEGIN/END
   ENUM(LX_KEYWORD_BEGIN),
     ENUM(LX_AND_KW),        // "and"
+    ENUM(LX_BREAK_KW),      // "break"
     ENUM(LX_DO_KW),         // "do"
     ENUM(LX_ELSE_KW),       // "else"
     ENUM(LX_END_KW),        // "end"
-    ENUM(LX_BREAK_KW),      // "break"
     ENUM(LX_IF_KW),         // "if"
     ENUM(LX_INIT_KW),       // "init"
+    ENUM(LX_JOIN_KW),       // "join"
     ENUM(LX_MODULE_KW),     // "module"
     ENUM(LX_NOT_KW),        // "not"
     ENUM(LX_OR_KW),         // "or"
     ENUM(LX_PRINT_CHAR_KW), // "print_char"
     ENUM(LX_PRINT_INT_KW),  // "print_int"
+    ENUM(LX_PRINT_KW),      // "print"
     ENUM(LX_SLEEP_KW),      // "sleep"
     ENUM(LX_SPAWN_KW),      // "spawn"
     ENUM(LX_STOP_KW),       // "stop"
     ENUM(LX_TASK_KW),       // "task"
     ENUM(LX_THEN_KW),       // "then"
+    ENUM(LX_TIMEOUT_KW),    // "timeout"
+    ENUM(LX_WAIT_KW),       // "wait"
     ENUM(LX_WHILE_KW),      // "while"
   ENUM(LX_KEYWORD_END),
   // Symbols (things which aren't numbers, characters, keywords, identifiers or EOF)
@@ -39,8 +43,10 @@
     ENUM(LX_DIVIDE_SYM),    // "/"
     ENUM(LX_REMAINDER_SYM), // "%"
     ENUM(LX_SEMICOLON_SYM), // ";"
+    ENUM(LX_COMMA_SYM),     // ","
   ENUM(LX_SYMBOL_END),
   ENUM(LX_CHAR),          // 'c' or '\x<hexdigit><hexdigit>' or '\n' or '\t' or '\''
+  ENUM(LX_STRING),
   ENUM(LX_NUMBER),        // digit+
   ENUM(LX_EOF),
   ENUM(LX_IDENTIFIER),    // case insensitive

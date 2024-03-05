@@ -1,7 +1,9 @@
 #pragma once
 
+
 #define STACK_SIZE 256
 #define MAX_CHANNELS_PER_TASK 10
+
 
 // Task states.
 enum
@@ -12,14 +14,17 @@ enum
   ST_BLOCKED = 0x03
 };
 
+
 // Block flags
 enum
 {
   B_JOIN = 1  // Currently the only way to block a task.
 };
 
+
 typedef struct TASK TASK;
 typedef struct MODULE MODULE;
+
 
 struct TASK
 {

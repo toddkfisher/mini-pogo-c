@@ -6,10 +6,12 @@
 #include <stdio.h>
 #include <util.h>
 
+
 #include "instruction.h"
 #include "binary-header.h"
 #include "exec.h"
 #include "module.h"
+
 
 MODULE *module_read(FILE *fin)
 {
@@ -17,7 +19,7 @@ MODULE *module_read(FILE *fin)
   result = malloc(sizeof(MODULE));
   result->mod_p_header = bhdr_read(fin);
   result->mod_p_init_task = NULL;
-  if (NULL != result->mod_p_header)
+  if (result->mod_p_header)
   {
     fseek(fin, result->mod_p_header->hdr_size_bytes, SEEK_SET);
     result->mod_p_code = malloc(result->mod_p_header->hdr_code_size_bytes);
@@ -28,21 +30,24 @@ MODULE *module_read(FILE *fin)
       free(result->mod_p_header);
       free(result);
       result = NULL;
+      fprintf(stderr, "Unable to read code.\n");
     }
   }
   else
   {
     free(result);
     result = NULL;
+    fprintf(stderr, "Unable to read module.\n");
   }
   return result;
 }
+
 
 void module_free(MODULE *p_module)
 {
   free(p_module->mod_p_code);
   free(p_module->mod_p_header);
-  if (NULL != p_module->mod_p_init_task)
+  if (p_module->mod_p_init_task)
     free(p_module->mod_p_init_task);
   free(p_module);
 }

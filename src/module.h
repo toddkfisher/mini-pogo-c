@@ -1,5 +1,6 @@
 #pragma once
 
+
 typedef struct TASK TASK;
 typedef struct MODULE MODULE;
 struct MODULE
@@ -9,6 +10,7 @@ struct MODULE
   INSTRUCTION *mod_p_code;
   TASK *mod_p_init_task;
 };
+
 
 MODULE *module_read(FILE *fin);
 void module_free(MODULE *p_module);

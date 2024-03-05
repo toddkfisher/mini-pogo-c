@@ -9,7 +9,9 @@
 #include <util.h>
 #include <cmdline-switch.h>
 
+
 #include "lex.h"
+
 
 // THEORY OF OPERATION:
 //   Input is taken from char (*g_lex_input_function)(void *p_personal_data, bool peek_char), a global
@@ -33,6 +35,7 @@
 //        (type LEXICAL_UNIT).
 //     5. Once end-of-file is reached, g_current_lex_unit.lex_type == LX_EOF thereafter.
 
+
 #include <enum-str.h>
 // Lexical type (LX_..) names as strings. Ex: lex_names[LX_IDENTIFIER] == "LX_IDENTIFIER".
 char *g_lex_names[] =
@@ -40,15 +43,17 @@ char *g_lex_names[] =
 #include "lex-enums.txt"
 };
 
+
 static INPUT_FUNCTION g_lex_input_function;
 // Input data pointer given to g_lex_input_function() on each call.
 static void *g_input_data;
 
+
 LEXICAL_UNIT g_current_lex_unit;
 uint32_t g_input_line_n = 1;
 uint32_t g_input_column_n = 1;
-
 bool g_lex_debug_print = false;   // Print lexical units as they are scanned.
+
 
 // Given to us by God.  A gift from Heaven above.
 char *ASCII[] =
@@ -87,15 +92,44 @@ char *ASCII[] =
   [0x7C] = "|",   [0x7D] = "}",   [0x7E] = "~",   [0x7F] = "DEL"
 };
 
+
 bool lex_is_keyword(uint8_t lex_type)
 {
   return lex_type > LX_KEYWORD_BEGIN && lex_type < LX_KEYWORD_END;
 }
 
+
 bool lex_is_symbol(uint8_t lex_type)
 {
   return lex_type > LX_SYMBOL_BEGIN && lex_type < LX_SYMBOL_END;
 }
+
+
+void lex_print_string_escaped(char *s)
+{
+  printf("\"");
+  while (*s)
+  {
+    switch (*s)
+    {
+      case '\n':
+        printf("\\n");
+        break;
+      case '\t':
+        printf("\\t");
+        break;
+      case '\\':
+        printf("\\");
+        break;
+      default:
+        printf("%c", *s);
+        break;
+    }
+    s += 1;
+  }
+  printf("\"");
+}
+
 
 void lex_print(LEXICAL_UNIT *p_lex)
 {
@@ -111,20 +145,30 @@ void lex_print(LEXICAL_UNIT *p_lex)
     case LX_CHAR:
       printf(" %s\n", ASCII[(uint8_t) p_lex->l_char]);
       break;
+    case LX_STRING:
+      lex_print_string_escaped(p_lex->l_string);
+      printf("\n");
+      break;
     default:
       printf("\n");
       break;
   }
 }
 
+
+// Set global variable holding pointer to input function and pointer to its data
+// block.
 void lex_set_input_function(INPUT_FUNCTION input_function, void *data_pointer)
 {
   g_lex_input_function = input_function;
   g_input_data = data_pointer;
 }
 
-// This function is a wrapper around g_lex_input_function() so that our code isn't
-// littered with checks for newline and setting column/line numbers.  It's in one place here:
+
+// This function  is a  wrapper around g_lex_input_function()  so that  our code
+// isn't littered with checks for newline and setting column/line numbers.  It's
+// in one place here:
+// RETURNS: character at head of input stream.
 char lex_get_char(bool peek_char)
 {
   char ch = (*g_lex_input_function)(g_input_data, peek_char);
@@ -141,18 +185,25 @@ char lex_get_char(bool peek_char)
   return ch;
 }
 
+
 static bool lex_is_whitespace(char ch)
 {
   return ch > '\0'&& ch <= ' ';
 }
 
-static void lex_skip_to(char ch, bool skip_over)
+
+// Consume characters until we reach 'ch'.
+static void lex_skip_to(
+  char ch,  // Character to stop consuming at.
+  bool skip_over  // If true, then 'ch' will be consumed as well.
+)
 {
   while (ch != lex_get_char(true))
     lex_get_char(false);
   if (skip_over && EOF != lex_get_char(true))
     lex_get_char(false);
 }
+
 
 static void lex_skip_whitespace(void)
 {
@@ -165,7 +216,8 @@ static void lex_skip_whitespace(void)
   }
 }
 
-// Keyword spelling -> keyword type.
+
+// Table: keyword spelling -> keyword type
 static struct
 {
   char *kw_name;
@@ -178,9 +230,11 @@ static struct
   { "end",         LX_END_KW        },
   { "if",          LX_IF_KW         },
   { "init",        LX_INIT_KW       },
+  { "join",        LX_JOIN_KW       },
   { "module",      LX_MODULE_KW     },
   { "not",         LX_NOT_KW        },
   { "or",          LX_OR_KW         },
+  { "print",       LX_PRINT_KW      },
   { "print_char",  LX_PRINT_CHAR_KW },
   { "print_int",   LX_PRINT_INT_KW  },
   { "sleep",       LX_SLEEP_KW      },
@@ -188,27 +242,31 @@ static struct
   { "stop",        LX_STOP_KW       },
   { "task",        LX_TASK_KW       },
   { "then",        LX_THEN_KW       },
+  { "timeout",     LX_TIMEOUT_KW    },
+  { "wait",        LX_WAIT_KW       },
   { "while",       LX_WHILE_KW      },
   { "",            0                },
 };
 
+
+// Scan sequence : letter (letter|digit)+.
 static bool lex_scan_identifier_or_keyword(void)
 {
-  // Index into l_name or keyword_to_type_table.
-  uint32_t i;
-  // String compare result when searching for keyword.
-  int scmp;
+  uint32_t i;  // Index into l_name or keyword_to_type_table.
+  int scmp;  // String compare result when searching for keyword.
   char *l_name = &g_current_lex_unit.l_name[0];
   char ch = tolower(lex_get_char(true));
   i = 0;
   zero_mem(l_name, MAX_STR);
-  do
+  while ('_' == ch || isalnum(ch))
   {
+    lex_get_char(false);  // We have the character in ch and we are going to use
+                          // it.  Advance the input to the next char.
     if (i < MAX_STR - 1)
       l_name[i] = ch;
     i += 1;
-    ch = tolower(lex_get_char(false));
-  } while ('_' == ch || isalnum(ch));
+    ch = tolower(lex_get_char(true));
+  }
   i = 0;
   while (keyword_to_type_table[i].kw_name[0] != '\0' &&
          (scmp = strcmp(keyword_to_type_table[i].kw_name, l_name)) < 0)
@@ -222,34 +280,36 @@ static bool lex_scan_identifier_or_keyword(void)
   return true;
 }
 
+
+// Scan simple unsigned integer.
 static bool lex_scan_number(void)
 {
   int32_t n = 0;
   while (isdigit(lex_get_char(true)))
   {
     n = n*10 + lex_get_char(true) - '0';
-    // Skip over digit
-    lex_get_char(false);
+    lex_get_char(false);  // Skip over digit
   }
   g_current_lex_unit.l_type = LX_NUMBER;
   g_current_lex_unit.l_number = n;
   return true;
 }
 
-static bool  lex_scan_symbol(void)
+
+// Scan a "symbol" is a sequence of non-alphanumeric graphic characters which is
+// part of the language.
+static bool lex_scan_symbol(void)
 {
   bool retval = true;
   uint8_t l_type = LX_ERROR;
-  char ch = lex_get_char(true);
-  lex_get_char(false);
+  char ch = lex_get_char(false);
   switch (ch)
   {
     case ':':
       if ('=' == lex_get_char(true))
       {
         l_type = LX_ASSIGN_SYM;
-        // Skip '='
-        lex_get_char(false);
+        lex_get_char(false);  // Skip '='.
       }
       else
         retval = false;
@@ -261,8 +321,7 @@ static bool  lex_scan_symbol(void)
       if ('=' == lex_get_char(true))
       {
         l_type = LX_GE_SYM;
-        // Skip '='
-        lex_get_char(false);
+        lex_get_char(false);  // Skip '='.
       }
       else
         l_type = LX_GT_SYM;
@@ -271,8 +330,7 @@ static bool  lex_scan_symbol(void)
       if ('=' == lex_get_char(true))
       {
         l_type = LX_LE_SYM;
-        // Skip '='
-        lex_get_char(false);
+        lex_get_char(false);  // Skip '='.
       }
       else
         l_type = LX_LT_SYM;
@@ -285,6 +343,9 @@ static bool  lex_scan_symbol(void)
       break;
     case ';':
       l_type = LX_SEMICOLON_SYM;
+      break;
+    case ',':
+      l_type = LX_COMMA_SYM;
       break;
     case '*':
       l_type = LX_TIMES_SYM;
@@ -310,7 +371,8 @@ static bool  lex_scan_symbol(void)
   return retval;
 }
 
-uint8_t lex_x_digit_value(char digit_char)
+
+static uint8_t lex_x_digit_value(char digit_char)
 {
   uint8_t result;
   digit_char = tolower(digit_char);
@@ -321,87 +383,115 @@ uint8_t lex_x_digit_value(char digit_char)
   return result;
 }
 
-bool lex_scan_char(void)
+
+// Scan a single character or escape sequence (in 'quote mode').
+//
+// Escape sequences are:
+//
+//  \n
+//  \t
+//  \<any other char>
+//
+// If the escape  sequence is "incomplete", meaning '\<EOF>' is  found, then set
+// *p_ch to EOF and return  false.  On successful return lex_get_char(...)  will
+// return whatever char follows the escape sequence.
+//
+// NOTE: in  all cases,  reading an EOF  char causes false  to be  returned. (we
+// should never  reach end-of-file in  "quote mode").  This  function's intended
+// use is to collect chars when scanning a string, or scan a single character.
+static bool lex_scan_quoted_char(char *p_ch)
 {
-  char ch = lex_get_char(false);  // Skip over single quote
-  bool result = false;
-  switch (ch)
+  char ch = lex_get_char(false);
+  bool result = true;
+  if (EOF == ch)
+    result = false;
+  else
   {
-    case '\\':  // '\x<hexdigit>+' or '\n' or '\t' or '\''
+    if ('\\' == ch)
+    {
+      // Escape sequence:
       ch = lex_get_char(false);  // Skip over backslash.
       if (EOF == ch)
-        g_current_lex_unit.l_type = LX_ERROR;
+        result = false;
       else
       {
-        g_current_lex_unit.l_type = LX_CHAR;
-        if ('x' != tolower(ch))
+        // Read '\n' or '\t' or '\<!EOF>' esc. seq.
+        switch (ch)
         {
-          // '\n' or '\t' or '\<anychar but eof>'
-          switch (ch)
-          {
-            case 'n':
-              g_current_lex_unit.l_char = '\n';
-              break;
-            case 't':
-              g_current_lex_unit.l_char = '\t';
-              break;
-            default:
-              g_current_lex_unit.l_char = ch;
-              break;
-          }
-          ch = lex_get_char(false);  // Skip over character following backslash.
-          if ('\'' != ch)
-            g_current_lex_unit.l_type = LX_ERROR;
-          else
-          {
-            lex_get_char(false);  // Skip over closing single quote.
-            result = true;
-          }
-        }
-        else
-        {
-          // '\x<hexdigit>+' (wraps around 127).
-          uint8_t n = 0;
-          ch = lex_get_char(false);  // Skip 'x'
-          while (isxdigit(ch))
-          {
-            n = ((n << 4) + lex_x_digit_value(ch));
-            n &= 0x7f;  // ASCII only bitches.
-            ch = lex_get_char(false);
-          }
-          if ('\'' != ch)
-            g_current_lex_unit.l_type = LX_ERROR;
-          else
-          {
-            g_current_lex_unit.l_type = LX_CHAR;
-            g_current_lex_unit.l_char = n;
-            result = true;
-            lex_get_char(false);  // Skip over closing single quote.
-          }
+          case 'n':
+            *p_ch = '\n';
+            break;
+          case 't':
+            *p_ch = '\t';
+            break;
+          default:
+            if (EOF == ch)
+              result = false;
+            else
+            *p_ch = ch;
+            break;
         }
       }
-      break;
-    default:  // '<char>'
-      g_current_lex_unit.l_type = LX_CHAR;
-      g_current_lex_unit.l_char = ch;
-      ch = lex_get_char(false);
-      if (EOF == ch)
-        g_current_lex_unit.l_type = LX_ERROR;
+    }
+    else
+    {
+      // Orinary character.
+      if (ch != EOF)
+        *p_ch = ch;
       else
-      {
-        if ('\'' != ch)
-          g_current_lex_unit.l_type = LX_ERROR;
-        else
-        {
-          lex_get_char(false);  // Skip over single quote.
-          result = true;
-        }
-      }
-      break;
+        result = false;
+    }
   }
   return result;
 }
 
+
+// String syntax: <double-quote><!double-quote>*<double-quote>
+static bool lex_scan_string(void)
+{
+  char ch;
+  uint32_t idx_string = 0;
+  bool result = true;
+  lex_get_char(false);  // Skip over opening double quote.
+  zero_mem(g_current_lex_unit.l_string, MAX_STR + 1);
+  while ((lex_get_char(true) != '"') && (result = lex_scan_quoted_char(&ch)))
+  {
+    if (idx_string < MAX_STR)
+    {
+      g_current_lex_unit.l_string[idx_string] = ch;
+      idx_string += 1;
+    }
+  }
+  if (result)
+  {
+    lex_get_char(false);  // Skip over terminating double quote.
+    g_current_lex_unit.l_type = LX_STRING;
+  }
+  return result;
+}
+
+
+// Scan a single-quoted character constant.
+static bool lex_scan_char(void)
+{
+  char ch;
+  bool result = true;
+  lex_get_char(false);  // Skip over opening single quote.
+  if ('\'' == lex_get_char(true))
+    result = false;  // Character constant terminated "early".
+  else if (result = lex_scan_quoted_char(&ch))
+  {
+    g_current_lex_unit.l_char = ch;
+    g_current_lex_unit.l_type = LX_CHAR;
+  }
+  if (result)
+    lex_get_char(false);  // Skip over terminating single quote.
+  return result;
+}
+
+
+// Dispatcher  to the  various types  of scanners.   Identifier/keyword, number,
+// string etc.
 bool lex_scan(void)
 {
   char ch;
@@ -418,6 +508,8 @@ bool lex_scan(void)
     retval = lex_scan_number();
   else if ('\'' == ch)
     retval = lex_scan_char();
+  else if ('"' == ch)
+    retval = lex_scan_string();
   else if (ispunct(ch))
     retval = lex_scan_symbol();
   else
