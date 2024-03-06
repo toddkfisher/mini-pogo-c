@@ -14,13 +14,19 @@ module collatz
       t0;
       t1;
       t2;
+    join
+    wait sec(5)
+    timeout
+      print "Join timed out in collatz init block.\n";
+    else
+      print "Join successful in collatz init block.\n";
     end;
   end;
 
   task t0
     while x < 4 do
       print_int 0;
-      sleep 2; ! seconds
+      sleep sec(2);
       x := x + 1;
     end;
   end;
@@ -28,7 +34,7 @@ module collatz
   task t1
     while x < 4 do
       print_int 1;
-      sleep 2; ! seconds
+      sleep sec(2);
       x := x + 1;
     end;
   end;
@@ -36,7 +42,7 @@ module collatz
   task t2
     while x < 4 do
       print_int 2;
-      sleep 2; ! seconds
+      sleep sec(2);
       x := x + 1;
     end;
   end;

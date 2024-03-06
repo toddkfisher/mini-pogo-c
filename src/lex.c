@@ -188,15 +188,13 @@ char lex_get_char(bool peek_char)
 
 static bool lex_is_whitespace(char ch)
 {
-  return ch > '\0'&& ch <= ' ';
+  return (ch > '\0'&& ch <= ' ') || '!' == ch;
 }
 
 
 // Consume characters until we reach 'ch'.
-static void lex_skip_to(
-  char ch,  // Character to stop consuming at.
-  bool skip_over  // If true, then 'ch' will be consumed as well.
-)
+static void lex_skip_to(char ch,  // Character to stop consuming at.
+                        bool skip_over)  // If true, then 'ch' will be consumed as well.
 {
   while (ch != lex_get_char(true))
     lex_get_char(false);
@@ -212,7 +210,10 @@ static void lex_skip_whitespace(void)
   {
     ch = lex_get_char(false);
     if ('!' == ch)
+    {
+      printf("comment found\n");
       lex_skip_to('\n', true);
+    }
   }
 }
 

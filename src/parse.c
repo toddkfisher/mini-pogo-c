@@ -597,7 +597,7 @@ static PARSE_NODE *parse_while(void)
 //spawn-statement = 'spawn' (name ';')+
 //                  'join' [timeout-clause]
 //
-// timeout-clause = 'wait' time-unit '(' expression ')'
+// timeout-clause = 'wait' expression
 //                  'timeout' statement-sequence
 //                  ['else' statement-sequence]
 //                  'end'

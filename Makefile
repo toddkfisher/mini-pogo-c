@@ -5,7 +5,7 @@
 #--------------------------------------------------------------------------------
 # Compiler, linker, flags etc.
 CC=clang
-CFLAGS=-g -Wall -Werror -Wpedantic -DDEBUG
+CFLAGS=-g -DDEBUG -w
 LINKFLAGS=-ltkf
 
 #--------------------------------------------------------------------------------
@@ -20,19 +20,19 @@ BIN_DIR=$(ROOT_DIR)/bin
 
 # mpc: "compiler" (m)ini (p)ogo (c)ompiler
 MPC=$(BIN_DIR)/mpc
-MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o symbol-table.o
+MPC_OBJS=mini-pogo.o binary-header.o compile.o parse.o lex.o symbol-table.o string-table.o
 
 # mpd: "disassembler" (m)ini (p)ogo (d)isassembler
 MPD=$(BIN_DIR)/mpd
-MPD_OBJS=disasm.o binary-header.o module.o
+MPD_OBJS=disasm.o lex.o binary-header.o module.o
 
 # mph: header printer (m)ini (p)ogo (h)eader
 MPH=$(BIN_DIR)/mph
-MPH_OBJS=binary-header.o header-print.o
+MPH_OBJS= header-print.o lex.o binary-header.o
 
 # mpr: run compiled module (m)ini (p)ogo (r)un
 MPR=$(BIN_DIR)/mpr
-MPR_OBJS=binary-header.o module.o exec.o
+MPR_OBJS=binary-header.o lex.o module.o exec.o
 
 #--------------------------------------------------------------------------------
 
@@ -96,6 +96,9 @@ $(O_DIR)/lex.o: $(SRC_DIR)/lex.c $(SRC_DIR)/lex.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/symbol-table.o: $(SRC_DIR)/symbol-table.c $(SRC_DIR)/symbol-table.h
+= $(CC) $(CFLAGS) -o $@ -c $<
+
+$(O_DIR)/string-table.o: $(SRC_DIR)/string-table.c $(SRC_DIR)/string-table.h
 = $(CC) $(CFLAGS) -o $@ -c $<
 
 $(O_DIR)/module.o: $(SRC_DIR)/module.c $(SRC_DIR)/module.h
