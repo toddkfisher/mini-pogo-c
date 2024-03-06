@@ -11,7 +11,6 @@ module string_test;
     print "three", 4;
     print "four", 5;
     print "five\n", 6;
-    print_char 'y';
     x := 123 + y;
   end;
 

@@ -210,10 +210,7 @@ static void lex_skip_whitespace(void)
   {
     ch = lex_get_char(false);
     if ('!' == ch)
-    {
-      printf("comment found\n");
       lex_skip_to('\n', true);
-    }
   }
 }
 

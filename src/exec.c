@@ -31,6 +31,7 @@ void *exec_run_task(void *pv_task);
 
 
 uint32_t g_n_tasks_created = 0;
+pthread_mutex_t g_print_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 
 TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
@@ -263,8 +264,22 @@ void *exec_run_task(void *pv_task)
           p_task->task_ip += 1;
         }
         break;
+      case OP_BEGIN_ATOMIC_PRINT:
+        pthread_mutex_lock(&g_print_mtx);
+        p_task->task_ip += 1;
+        break;
+      case OP_END_ATOMIC_PRINT:
+        pthread_mutex_unlock(&g_print_mtx);
+        p_task->task_ip += 1;
+        break;
+      case OP_PRINT_STRING:
+        printf("%s", p_task->task_p_module->mod_p_header->hdr_p_string_list[p_code[p_task->task_ip].i_string_idx]);
+        //           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //                                              YIKES!
+        p_task->task_ip += 1;
+        break;
       case OP_BAD:
-        printf("OP_BAD\n");
+        fprintf(stderr, "OP_BAD\n");
         exit(0);
         break;
       default:

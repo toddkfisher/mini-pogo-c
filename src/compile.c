@@ -418,7 +418,6 @@ uint32_t compile_write_header(FILE *fout)
   }
   p_header->hdr_n_labels = g_n_labels;
   p_header->hdr_p_string_list = malloc(sizeof(char *)*g_n_strings);
-  printf("g_n_strings == %u\n", g_n_strings);
   if (p_header->hdr_n_strings = g_n_strings)
   {
     for (uint32_t i = 0; i < STRING_HTABLE_SIZE; ++i)
