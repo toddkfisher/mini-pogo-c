@@ -6,8 +6,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "parse.h"
 #include "lex.h"
 #include "instruction.h"
@@ -15,74 +14,62 @@
 #include "compile.h"
 #include "symbol-table.h"
 #include "string-table.h"
-
-
+//------------------------------------------------------------------------------
 static uint32_t g_n_labels = 0;
 static INSTRUCTION g_code[MAX_CODE_SIZE];
 static uint32_t g_ip = 0;
 static char g_module_name[MAX_STR];
-
-
+//------------------------------------------------------------------------------
 extern uint32_t g_n_strings;
 extern STRING_CONST *g_hash_strings[STRING_HTABLE_SIZE];
 extern LABEL *g_hash_labels[SYMBOL_HTABLE_SIZE];
 extern uint32_t g_n_labels;
 static uint32_t g_label_suffix_number = 0;
-
-
+//------------------------------------------------------------------------------
 static void compile_create_label_name(char *prefix, char *name_dest)
 {
   sprintf(name_dest, "<%s_%u>", prefix, g_label_suffix_number++);
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_END_TASK(void)
 {
   g_code[g_ip++].i_opcode = OP_END_TASK;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_binary_op(uint8_t opcode, PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_left_expr);
   compile(p_tree->nd_p_right_expr);
   g_code[g_ip++].i_opcode = opcode;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_BEGIN_SPAWN(void)
 {
   g_code[g_ip++].i_opcode = OP_BEGIN_SPAWN;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_SPAWN(uint32_t task_addr)
 {
   g_code[g_ip].i_opcode = OP_SPAWN;
   g_code[g_ip++].i_task_addr = task_addr;
 }
-
-
-void compile_OP_END_SPAWN(void)
-{
-  g_code[g_ip++].i_opcode = OP_END_SPAWN;
-}
-
-
+//------------------------------------------------------------------------------
 void compile_OP_PRINT_INT(void)
 {
   g_code[g_ip++].i_opcode = OP_PRINT_INT;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_PUSH_VAR(char var_name)
 {
   g_code[g_ip].i_var_name = var_name;
   g_code[g_ip++].i_opcode = OP_PUSH_VAR;
 }
-
-
-#if 0
+//------------------------------------------------------------------------------
+void compile_OP_JOIN(void)
+{
+  g_code[g_ip++].i_opcode = OP_JOIN;
+}
+//------------------------------------------------------------------------------
 static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
 {
   uint32_t n_spawn_tasks = 0;
@@ -93,11 +80,16 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
   //     SPAWN <addr of t0>
   //     SPAWN <addr of t1>
   //     SPAWN <addr of t2>
-  //     END_SPAWN
+  //     JOIN
   //
-  // 1) If t_k isn't in the symbol table, then we add it and g_ip for future backpatching.
-  // 2) If t_k is in the symbol table and it address is set (lbl_addr_set), then we use the address and no backpatching is necessary.
-  // 3) If t_k is in the symbol table and its address is not set (lbl_addr_set), then we add it and g_ip++ for future backpatching.
+  // 1) If  t_k isn't in the  symbol table, then we  add it and g_ip  for future
+  //    backpatching.
+  //
+  // 2) If t_k is in the symbol table and it address is set (lbl_addr_set), then
+  //    we use the address and no backpatching is necessary.
+  //
+  // 3) If t_k is in the symbol table and its address is not set (lbl_addr_set),
+  //    then we add it and g_ip++ for future backpatching.
   compile_OP_BEGIN_SPAWN();
   for (LISTITEM *p_task_name = p_nd_spawn->nd_p_task_names;
        p_task_name;
@@ -125,11 +117,9 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     compile_OP_SPAWN(task_addr);
   }
   g_code[begin_spawn_addr].i_n_spawn_tasks = n_spawn_tasks;
-  compile_OP_END_SPAWN();
+  compile_OP_JOIN();
 }
-#endif
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_AND(PARSE_NODE *p_tree)
 {
   char jump_label_name[MAX_STR];
@@ -150,8 +140,7 @@ static void compile_ND_AND(PARSE_NODE *p_tree)
   g_n_labels += 1;
   g_code[backpatch].i_jump_addr = g_ip;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_OR(PARSE_NODE *p_tree)
 {
   char jump_label_name[MAX_STR];
@@ -172,8 +161,7 @@ static void compile_ND_OR(PARSE_NODE *p_tree)
   g_n_labels += 1;
   g_code[backpatch].i_jump_addr = g_ip;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_IF(PARSE_NODE *p_nd_if)
 {
   uint32_t condition_false_jump_addr;
@@ -217,8 +205,7 @@ static void compile_ND_IF(PARSE_NODE *p_nd_if)
   g_n_labels += 1;
   g_code[jump_to_end_if_addr].i_jump_addr = g_ip;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
 {
   uint32_t top_of_loop_addr;
@@ -247,57 +234,49 @@ static void compile_ND_WHILE(PARSE_NODE *p_nd_while)
   symtab_add_jump_label(jump_label_name, g_ip);
   g_n_labels += 1;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_OP_POP_INT(char var_name)
 {
   g_code[g_ip].i_opcode = OP_POP_INT;
   g_code[g_ip++].i_var_name = var_name;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_OP_PRINT_CHAR(char ch)
 {
   g_code[g_ip].i_opcode = OP_PRINT_CHAR;
   g_code[g_ip++].i_char = ch;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_OP_PUSH_CONST_INT(int32_t n)
 {
   g_code[g_ip].i_opcode = OP_PUSH_CONST_INT;
   g_code[g_ip++].i_const_int = n;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_PRINT_INT(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_expr);
   g_code[g_ip++].i_opcode = OP_PRINT_INT;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_SLEEP(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_expr);
   g_code[g_ip++].i_opcode = OP_SLEEP;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_NEGATE(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_expr);
   g_code[g_ip++].i_opcode = OP_NEGATE;
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_ASSIGN(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_assign_expr);
   compile_OP_POP_INT(p_tree->nd_var_name);
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
 {
   for (LISTITEM *p_statement = p_tree->nd_p_statement_seq;
@@ -307,8 +286,7 @@ static void compile_ND_STATEMENT_SEQUENCE(PARSE_NODE *p_tree)
     compile(p_statement->l_parse_node);
   }
 }
-
-
+//------------------------------------------------------------------------------
 static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
 {
   LABEL *p_task_label = symtab_lookup_label(p_tree->nd_task_name);
@@ -338,12 +316,12 @@ static void compile_ND_TASK_DECLARATION(PARSE_NODE *p_tree)
   compile(p_tree->nd_p_task_body);
   compile_OP_END_TASK();  // Every task has an implicit 'stop' at the end.
 }
-
-
+//------------------------------------------------------------------------------
 void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
 {
   compile(p_tree->nd_p_init_statements);
-  g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied 'stop' at end of module initialization.
+  g_code[g_ip++].i_opcode = OP_END_TASK;  // Implied  'stop'  at end  of  module
+                                          // initialization.
   for (LISTITEM *p_task_declaration = p_tree->nd_p_task_decl_list;
        p_task_declaration;
        p_task_declaration = p_task_declaration->l_p_next)
@@ -351,8 +329,7 @@ void compile_ND_MODULE_DECLARATION(PARSE_NODE *p_tree)
     compile(p_task_declaration->l_parse_node);
   }
 }
-
-
+//------------------------------------------------------------------------------
 void compile_check_for_undefined_tasks(void)
 {
   bool undefined_tasks_found = false;
@@ -375,16 +352,14 @@ void compile_check_for_undefined_tasks(void)
   if (undefined_tasks_found)
     error_exit(0);
 }
-
-
+//------------------------------------------------------------------------------
 void compile_init(void)
 {
   symtab_hash_init();
   strtab_init();
   g_ip = 0;
 }
-
-
+//------------------------------------------------------------------------------
 uint32_t compile_write_header(FILE *fout)
 {
   uint32_t idx_label;
@@ -439,15 +414,13 @@ uint32_t compile_write_header(FILE *fout)
   result = bhdr_write(fout, p_header);
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 uint32_t compile_write_code(FILE *fout)
 {
   uint32_t n_instructions_written = fwrite(g_code, sizeof(INSTRUCTION), g_ip, fout);
   return n_instructions_written;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_ND_PRINT_STRING(PARSE_NODE *p_tree)
 {
   STRING_CONST *p_str = strtab_add_string(p_tree->nd_string_const);
@@ -455,20 +428,17 @@ void compile_ND_PRINT_STRING(PARSE_NODE *p_tree)
   g_code[g_ip].i_string_idx = p_str->s_table_index;
   g_ip += 1;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_BEGIN_ATOMIC_PRINT(void)
 {
   g_code[g_ip++].i_opcode = OP_BEGIN_ATOMIC_PRINT;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_OP_END_ATOMIC_PRINT(void)
 {
   g_code[g_ip++].i_opcode = OP_END_ATOMIC_PRINT;
 }
-
-
+//------------------------------------------------------------------------------
 void compile_ND_ATOMIC_PRINT(PARSE_NODE *p_tree)
 {
   compile_OP_BEGIN_ATOMIC_PRINT();
@@ -480,8 +450,7 @@ void compile_ND_ATOMIC_PRINT(PARSE_NODE *p_tree)
   }
   compile_OP_END_ATOMIC_PRINT();
 }
-
-
+//------------------------------------------------------------------------------
 void compile(PARSE_NODE *p_tree)
 {
   if (p_tree)
@@ -517,11 +486,9 @@ void compile(PARSE_NODE *p_tree)
       case ND_SLEEP:
         compile_ND_SLEEP(p_tree);
         break;
-#if 0
-      case ND_SPAWN:
+      case ND_SPAWN_JOIN:
         compile_ND_SPAWN(p_tree);
         break;
-#endif
       case ND_STOP:
         compile_OP_END_TASK();
         break;

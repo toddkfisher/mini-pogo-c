@@ -5,10 +5,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <util.h>
-
+//------------------------------------------------------------------------------
 #include "binary-header.h"
 #include "instruction.h"
-
+//------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
   if (2 != argc)

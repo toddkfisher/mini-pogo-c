@@ -3,6 +3,7 @@
     ENUM(LX_AND_KW),        // "and"
     ENUM(LX_BREAK_KW),      // "break"
     ENUM(LX_DO_KW),         // "do"
+    ENUM(LX_DO_NOTHING_KW), // "do_nothing"
     ENUM(LX_ELSE_KW),       // "else"
     ENUM(LX_END_KW),        // "end"
     ENUM(LX_IF_KW),         // "if"

@@ -8,32 +8,27 @@
 #include <unistd.h>
 #include <signal.h>
 #include <cmdline-switch.h>
-
-
+//------------------------------------------------------------------------------
 #include "lex.h"
 #include "parse.h"
 #include "compile.h"
 #include "binary-header.h"
-
-
+//------------------------------------------------------------------------------
 #define macstr(x) #x
-
-
+//------------------------------------------------------------------------------
 enum COMPILE_FLAGS
 {
   CF_NONE = 0,
   CF_HEADER = 1,
   CF_CODE = 2
 };
-
-
+//------------------------------------------------------------------------------
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
 extern bool g_lex_debug_print;  // Print lexical units as they are scanned.
-
-
+//------------------------------------------------------------------------------
 // Sequence of expected lexical types from test-module-3.pogo.
 uint8_t test_module_3_pogo_lex_types[] =
 {
@@ -116,8 +111,7 @@ uint8_t test_module_3_pogo_lex_types[] =
   LX_SEMICOLON_SYM,        // ;
   LX_EOF
 };
-
-
+//------------------------------------------------------------------------------
 // Data block for file_input().
 typedef struct
 {
@@ -125,16 +119,14 @@ typedef struct
   char f_file_name[MAX_STR + 1];
   bool f_eof_reached;
 } FILE_READ;
-
-
+//------------------------------------------------------------------------------
 void file_input_init(FILE_READ *p_fr)
 {
   p_fr->f_file = NULL;
   zero_mem(p_fr->f_file_name, MAX_STR + 1);
   p_fr->f_eof_reached = false;
 }
-
-
+//------------------------------------------------------------------------------
 char file_input(void *p_data, bool const peek_char)
 {
   FILE_READ *p_fr = (FILE_READ *) p_data;
@@ -150,8 +142,7 @@ char file_input(void *p_data, bool const peek_char)
   }
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 uint32_t file_size(void *p_data)
 {
   int fd = fileno(((FILE_READ *) p_data)->f_file);
@@ -159,14 +150,12 @@ uint32_t file_size(void *p_data)
   fstat(fd, &statbuf);
   return (uint32_t) statbuf.st_size;
 }
-
-
+//------------------------------------------------------------------------------
 void file_reset_to_beginning(void *p_data)
 {
   fseek(((FILE_READ *) p_data)->f_file, 0, SEEK_SET);
 }
-
-
+//------------------------------------------------------------------------------
 void test_lex(char *const filename)
 {
   FILE_READ fr;
@@ -196,8 +185,7 @@ void test_lex(char *const filename)
     fclose(fr.f_file);
   }
 }
-
-
+//------------------------------------------------------------------------------
 void scan_file_and_print(char *const filename)
 {
   FILE_READ fr;
@@ -215,8 +203,7 @@ void scan_file_and_print(char *const filename)
     } while (LX_EOF != g_current_lex_unit.l_type && LX_ERROR != g_current_lex_unit.l_type);
   }
 }
-
-
+//------------------------------------------------------------------------------
 void test_parse(char *const filename)
 {
   FILE_READ fr;
@@ -233,8 +220,7 @@ void test_parse(char *const filename)
     fclose(fr.f_file);
   }
 }
-
-
+//------------------------------------------------------------------------------
 void compile_selectively(uint32_t compile_flags,
                          char *input_filename,
                          char *output_filename)
@@ -270,8 +256,7 @@ void compile_selectively(uint32_t compile_flags,
     }
   }
 }
-
-
+//------------------------------------------------------------------------------
 void test_file_read(char *filename)
 {
   FILE_READ fr;
@@ -287,8 +272,7 @@ void test_file_read(char *filename)
       putchar(ch);
   }
 }
-
-
+//------------------------------------------------------------------------------
 char *test_module_3_pogo_text =
   "module test\n"
   "  init\n"
@@ -313,16 +297,14 @@ char *test_module_3_pogo_text =
   "    end;\n"
   "  end;\n"
   "end;\n";
-
-
+//------------------------------------------------------------------------------
 // Data block for in-memory input.
 typedef struct MEM_READ
 {
   char *m_entire_text;
   char *m_p_current;
 } MEM_READ;
-
-
+//------------------------------------------------------------------------------
 char mem_input(void *p_data, bool peek_char)
 {
   MEM_READ *p_mem_read = (MEM_READ *) p_data;
@@ -332,8 +314,7 @@ char mem_input(void *p_data, bool peek_char)
     p_mem_read->m_p_current += 1;
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 void test_mem_read(void)
 {
   MEM_READ mread;
@@ -343,8 +324,7 @@ void test_mem_read(void)
   while (EOF != (ch = lex_get_char(false)))
     putchar(ch);
 }
-
-
+//------------------------------------------------------------------------------
 enum
 {
   S_HELP,
@@ -356,8 +336,7 @@ enum
   S_COMPILE_HEADER,
   S_COMPILE
 };
-
-
+//------------------------------------------------------------------------------
 SWITCH g_lex_test_switches[] =
 {
   //  s_switch_id      s_long_name                s_short_name  s_min_parameters s_max_parameters    s_usage                                             s_flags
@@ -371,8 +350,7 @@ SWITCH g_lex_test_switches[] =
   { S_COMPILE,          "--compile",              "-c",         2,               2,                  "usage: --compile <input file> <output file>",             CS_PARAM_ERROR_ALL },
   SWITCH_LIST_END
 };
-
-
+//------------------------------------------------------------------------------
 void help(void)
 {
   fprintf(stderr, "OPTIONS:\n");
@@ -385,8 +363,7 @@ void help(void)
   fprintf(stderr, "--compile-header-only  <input file> <output file> Write header and no code to output-file.\n");
   fprintf(stderr, "--compile <input file> <output file>              Write header code to output-file.\n");
 }
-
-
+//------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
   int32_t n_params = 0;

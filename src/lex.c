@@ -8,53 +8,57 @@
 #include <unistd.h>
 #include <util.h>
 #include <cmdline-switch.h>
-
-
+//------------------------------------------------------------------------------
 #include "lex.h"
-
-
+//------------------------------------------------------------------------------
 // THEORY OF OPERATION:
-//   Input is taken from char (*g_lex_input_function)(void *p_personal_data, bool peek_char), a global
-//   function pointer variable. Set the function and pointer to its data with
-//   lex_set_input_function(fn, void *data).  g_lex_input_function() should be ready to
-//   read on the first call.  Initialization should take place prior to
-//   lex_set_input_function().
+//
+//   Input  is taken  from  char (*g_lex_input_function)(void  *p_personal_data,
+//   bool peek_char), a  global function pointer variable. Set  the function and
+//   pointer   to  its   data  with   lex_set_input_function(fn,  void   *data).
+//   g_lex_input_function()  should  be  ready  to   read  on  the  first  call.
+//   Initialization should take place prior to lex_set_input_function().
 //
 //   -- USER-SUPPLIED lex_input_function() SHOULD:
+//
 //     1. return EOF when it exhausts it's input.
+//
 //     2. return and consume a character when passed a value of peek_char == false.
-//     3. return and not consume a character when passed a value of peek_char == true.
+//
+//     3. return and not consume a character when passed a value of peek_char ==
+//        true.
 //
 //   -- SCANNING LEXICAL UNITS:
-//     1. The name of the input source, typically a filename, is stored in the global variable:
-//        g_input_name.
+//
+//     1. The name of  the input source, typically a filename,  is stored in the
+//        global variable: g_input_name.
+//
 //     2. To scan the next lexical unit from the input source, call lex_scan().
-//     3. The source line number and source col number are stored in the global variables:
-//        g_input_line_n, g_input_column_n respectively.
-//     4. The last lexical unit scanned is stored in the global variable: g_current_lex_unit
-//        (type LEXICAL_UNIT).
-//     5. Once end-of-file is reached, g_current_lex_unit.lex_type == LX_EOF thereafter.
-
-
+//
+//     3. The source line number and source  col number are stored in the global
+//        variables: g_input_line_n, g_input_column_n respectively.
+//
+//     4.  The last  lexical  unit scanned  is stored  in  the global  variable:
+//        g_current_lex_unit (type LEXICAL_UNIT).
+//
+//     5.  Once end-of-file  is reached,  g_current_lex_unit.lex_type ==  LX_EOF
+//       thereafter.
+//------------------------------------------------------------------------------
 #include <enum-str.h>
-// Lexical type (LX_..) names as strings. Ex: lex_names[LX_IDENTIFIER] == "LX_IDENTIFIER".
 char *g_lex_names[] =
 {
 #include "lex-enums.txt"
 };
-
-
+//------------------------------------------------------------------------------
 static INPUT_FUNCTION g_lex_input_function;
 // Input data pointer given to g_lex_input_function() on each call.
 static void *g_input_data;
-
-
+//------------------------------------------------------------------------------
 LEXICAL_UNIT g_current_lex_unit;
 uint32_t g_input_line_n = 1;
 uint32_t g_input_column_n = 1;
 bool g_lex_debug_print = false;   // Print lexical units as they are scanned.
-
-
+//------------------------------------------------------------------------------
 // Given to us by God.  A gift from Heaven above.
 char *ASCII[] =
 {
@@ -91,20 +95,17 @@ char *ASCII[] =
   [0x78] = "x",   [0x79] = "y",   [0x7A] = "z",   [0x7B] = "{",
   [0x7C] = "|",   [0x7D] = "}",   [0x7E] = "~",   [0x7F] = "DEL"
 };
-
-
+//------------------------------------------------------------------------------
 bool lex_is_keyword(uint8_t lex_type)
 {
   return lex_type > LX_KEYWORD_BEGIN && lex_type < LX_KEYWORD_END;
 }
-
-
+//------------------------------------------------------------------------------
 bool lex_is_symbol(uint8_t lex_type)
 {
   return lex_type > LX_SYMBOL_BEGIN && lex_type < LX_SYMBOL_END;
 }
-
-
+//------------------------------------------------------------------------------
 void lex_print_string_escaped(char *s)
 {
   printf("\"");
@@ -129,8 +130,7 @@ void lex_print_string_escaped(char *s)
   }
   printf("\"");
 }
-
-
+//------------------------------------------------------------------------------
 void lex_print(LEXICAL_UNIT *p_lex)
 {
   printf("%s", g_lex_names[p_lex->l_type]);
@@ -154,8 +154,7 @@ void lex_print(LEXICAL_UNIT *p_lex)
       break;
   }
 }
-
-
+//------------------------------------------------------------------------------
 // Set global variable holding pointer to input function and pointer to its data
 // block.
 void lex_set_input_function(INPUT_FUNCTION input_function, void *data_pointer)
@@ -163,8 +162,7 @@ void lex_set_input_function(INPUT_FUNCTION input_function, void *data_pointer)
   g_lex_input_function = input_function;
   g_input_data = data_pointer;
 }
-
-
+//------------------------------------------------------------------------------
 // This function  is a  wrapper around g_lex_input_function()  so that  our code
 // isn't littered with checks for newline and setting column/line numbers.  It's
 // in one place here:
@@ -184,14 +182,12 @@ char lex_get_char(bool peek_char)
   }
   return ch;
 }
-
-
+//------------------------------------------------------------------------------
 static bool lex_is_whitespace(char ch)
 {
   return (ch > '\0'&& ch <= ' ') || '!' == ch;
 }
-
-
+//------------------------------------------------------------------------------
 // Consume characters until we reach 'ch'.
 static void lex_skip_to(char ch,  // Character to stop consuming at.
                         bool skip_over)  // If true, then 'ch' will be consumed as well.
@@ -201,8 +197,7 @@ static void lex_skip_to(char ch,  // Character to stop consuming at.
   if (skip_over && EOF != lex_get_char(true))
     lex_get_char(false);
 }
-
-
+//------------------------------------------------------------------------------
 static void lex_skip_whitespace(void)
 {
   char ch;
@@ -213,8 +208,7 @@ static void lex_skip_whitespace(void)
       lex_skip_to('\n', true);
   }
 }
-
-
+//------------------------------------------------------------------------------
 // Table: keyword spelling -> keyword type
 static struct
 {
@@ -224,6 +218,7 @@ static struct
 {
   { "and",         LX_AND_KW        },
   { "do",          LX_DO_KW         },
+  { "do_nothing",  LX_DO_NOTHING_KW },
   { "else",        LX_ELSE_KW       },
   { "end",         LX_END_KW        },
   { "if",          LX_IF_KW         },
@@ -245,8 +240,7 @@ static struct
   { "while",       LX_WHILE_KW      },
   { "",            0                },
 };
-
-
+//------------------------------------------------------------------------------
 // Scan sequence : letter (letter|digit)+.
 static bool lex_scan_identifier_or_keyword(void)
 {
@@ -277,8 +271,7 @@ static bool lex_scan_identifier_or_keyword(void)
     g_current_lex_unit.l_type = LX_IDENTIFIER;
   return true;
 }
-
-
+//------------------------------------------------------------------------------
 // Scan simple unsigned integer.
 static bool lex_scan_number(void)
 {
@@ -292,10 +285,8 @@ static bool lex_scan_number(void)
   g_current_lex_unit.l_number = n;
   return true;
 }
-
-
-// Scan a "symbol" is a sequence of non-alphanumeric graphic characters which is
-// part of the language.
+//------------------------------------------------------------------------------
+// Scan a "symbol" is a sequence of non-alphanumeric graphic characters
 static bool lex_scan_symbol(void)
 {
   bool retval = true;
@@ -368,8 +359,7 @@ static bool lex_scan_symbol(void)
   g_current_lex_unit.l_type = l_type;
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static uint8_t lex_x_digit_value(char digit_char)
 {
   uint8_t result;
@@ -380,8 +370,7 @@ static uint8_t lex_x_digit_value(char digit_char)
     result = 10 + digit_char - 'a';
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 // Scan a single character or escape sequence (in 'quote mode').
 //
 // Escape sequences are:
@@ -442,8 +431,7 @@ static bool lex_scan_quoted_char(char *p_ch)
   }
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 // String syntax: <double-quote><!double-quote>*<double-quote>
 static bool lex_scan_string(void)
 {
@@ -467,8 +455,7 @@ static bool lex_scan_string(void)
   }
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 // Scan a single-quoted character constant.
 static bool lex_scan_char(void)
 {
@@ -486,10 +473,9 @@ static bool lex_scan_char(void)
     lex_get_char(false);  // Skip over terminating single quote.
   return result;
 }
-
-
-// Dispatcher  to the  various types  of scanners.   Identifier/keyword, number,
-// string etc.
+//------------------------------------------------------------------------------
+// Dispatcher  to the  various types  of scanners.
+// Identifier/keyword, number, string etc.
 bool lex_scan(void)
 {
   char ch;

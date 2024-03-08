@@ -7,33 +7,27 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "instruction.h"
 #include "binary-header.h"
 #include "instruction.h"
 #include "exec.h"
 #include "module.h"
-
-
+//------------------------------------------------------------------------------
 #define PUSH(p_task, x) (p_task)->task_stack[(p_task)->task_stack_top++] = (x)
 #define POP(p_task) (p_task)->task_stack[--(p_task)->task_stack_top]
 #define STACK_PEEK(p_task, offset) (p_task)->task_stack[(p_task)->task_stack_top - 1 - (offset)]
 #define STACK_DROP(p_task) --((p_task)->task_stack_top)
-
-
+//------------------------------------------------------------------------------
 #define U64_LO_U32(x) ((x) & (uint64_t) 0xffffffff)
 #define U64_HI_U32(x) (((x) >> 32) & (uint64_t) 0xffffffff)
 #define U32x2_TO_U64(lo, hi) ((((uint64_t) (hi)) << 32) | ((uint64_t) lo))
-
-
+//------------------------------------------------------------------------------
 void *exec_run_task(void *pv_task);
-
-
+//------------------------------------------------------------------------------
 uint32_t g_n_tasks_created = 0;
 pthread_mutex_t g_print_mtx = PTHREAD_MUTEX_INITIALIZER;
-
-
+//------------------------------------------------------------------------------
 TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
 {
   TASK *result = malloc(sizeof(TASK));
@@ -48,8 +42,7 @@ TASK *exec_create_task(char *name, MODULE *p_module, uint32_t ip)
   g_n_tasks_created += 1;
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
 {
   TASK *p_child_task = NULL;
@@ -60,7 +53,8 @@ void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
   {
     if (child_task_addr == p_header->hdr_p_label_list[i].hlbl_addr)
     {
-      sprintf(child_task_name, "%s:%u", p_header->hdr_p_label_list[i].hlbl_name, g_n_tasks_created);
+      sprintf(child_task_name, "%s:%u", p_header->hdr_p_label_list[i].hlbl_name,
+              g_n_tasks_created);
       break;
     }
   }
@@ -70,8 +64,7 @@ void exec_add_spawn_task(TASK *p_parent_task, uint32_t child_task_addr)
   PUSH(p_parent_task, U64_LO_U32((uint64_t) p_child_task));
   PUSH(p_parent_task, U64_HI_U32((uint64_t) p_child_task));
 }
-
-
+//------------------------------------------------------------------------------
 void *exec_top_of_stack_to_ptr(TASK *p_task, uint32_t stk_offset)
 {
   uint32_t u32_hi = STACK_PEEK(p_task, 0 + stk_offset);
@@ -79,8 +72,7 @@ void *exec_top_of_stack_to_ptr(TASK *p_task, uint32_t stk_offset)
   void *result = (void *) U32x2_TO_U64(u32_lo, u32_hi);
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 void exec_run_then_join_spawn(TASK *p_parent_task)
 {
   uint32_t stk_offset = 0;
@@ -102,8 +94,7 @@ void exec_run_then_join_spawn(TASK *p_parent_task)
     STACK_DROP(p_parent_task);
   }
 }
-
-
+//------------------------------------------------------------------------------
 #define BINARY_OP(operator)                                       \
   do                                                              \
   {                                                               \
@@ -111,8 +102,7 @@ void exec_run_then_join_spawn(TASK *p_parent_task)
     y = POP(p_task);                                              \
     PUSH(p_task, y operator x);                                   \
   } while (0)
-
-
+//------------------------------------------------------------------------------
 void *exec_run_task(void *pv_task)
 {
   int32_t x;
@@ -221,12 +211,12 @@ void *exec_run_task(void *pv_task)
         exec_add_spawn_task(p_task, p_code[p_task->task_ip].i_task_addr);
         p_task->task_ip += 1;
         break;
-      case OP_END_SPAWN:
+      case OP_JOIN:
         exec_run_then_join_spawn(p_task);
         p_task->task_ip += 1;
         break;
       case OP_PRINT_INT:
-        printf("%d\n", POP(p_task));
+        printf("%d", POP(p_task));
         p_task->task_ip += 1;
         break;
       case OP_PRINT_CHAR:
@@ -288,9 +278,8 @@ void *exec_run_task(void *pv_task)
   }
   pthread_exit(NULL);
 }
-
-
-// Load module and run it's 'init' code block.
+//------------------------------------------------------------------------------
+// Load module and run its 'init' code block.
 void exec_run_module_at_init_code(char *module_file_name)
 {
   FILE *fin = fopen(module_file_name, "r");
@@ -301,7 +290,8 @@ void exec_run_module_at_init_code(char *module_file_name)
     if (p_module)
     {
       char init_task_name[MAX_STR];
-      sprintf(init_task_name, "%s.<init>:%u", p_module->mod_p_header->hdr_module_name, g_n_tasks_created);
+      sprintf(init_task_name, "%s.<init>:%u", p_module->mod_p_header->hdr_module_name,
+              g_n_tasks_created);
       p_module->mod_p_init_task = exec_create_task(init_task_name, p_module, 0);
       pthread_create(&(p_module->mod_p_init_task->task_thread_id),
                      NULL,
@@ -313,8 +303,7 @@ void exec_run_module_at_init_code(char *module_file_name)
     fclose(fin);
   }
 }
-
-
+//------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
   if (argc != 2)

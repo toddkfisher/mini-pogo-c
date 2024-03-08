@@ -5,22 +5,19 @@
 #include <string.h>
 #include <stdio.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "string-table.h"
-
-
+//------------------------------------------------------------------------------
 STRING_CONST *g_hash_strings[STRING_HTABLE_SIZE];
 uint32_t g_n_strings = 0;
-
+//------------------------------------------------------------------------------
 void strtab_init(void)
 {
   g_n_strings = 0;
   for (int i = 0; i < STRING_HTABLE_SIZE; ++i)
     g_hash_strings[i] = NULL;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t strtab_hash(char *s)
 {
   uint32_t char_sum = 0;
@@ -30,8 +27,7 @@ static uint32_t strtab_hash(char *s)
   result = char_sum % STRING_HTABLE_SIZE;
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 STRING_CONST *strtab_lookup_string(char *s)
 {
   STRING_CONST *result = NULL;
@@ -43,8 +39,7 @@ STRING_CONST *strtab_lookup_string(char *s)
   }
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 STRING_CONST *strtab_add_string(char *s)
 {
   STRING_CONST *result = strtab_lookup_string(s);

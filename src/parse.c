@@ -6,12 +6,10 @@
 #include <ctype.h>
 #include <signal.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "parse.h"
 #include "lex.h"
-
-
+//------------------------------------------------------------------------------
 // THEORY OF OPERATION:
 //
 // This C  module creates a parse  tree for the grammar  below. PARSE_NODE_TYPES
@@ -98,40 +96,36 @@
 //                          | number
 //
 //                          | '(' expression ')'
-
-
+//------------------------------------------------------------------------------
 extern LEXICAL_UNIT g_current_lex_unit;
 extern uint32_t g_input_line_n;
 extern uint32_t g_input_column_n;
 extern char *g_lex_names[];
 extern bool g_lex_debug_print;
 extern char *ASCII[];
-
-
+//------------------------------------------------------------------------------
 #include <enum-str.h>
 char *g_parse_node_names[] =
 {
 #include "parse-node-enum.txt"
 };
-
-
+//------------------------------------------------------------------------------
 #define N_SPACES_INDENT 1
-
-
+//------------------------------------------------------------------------------
 static void parse_print_indent(uint32_t indent_level, char indent_char)
 {
   for (uint32_t i = 0; i < indent_level; ++i)
     for (uint32_t j = 0; j < N_SPACES_INDENT; ++j)
       putchar(indent_char);
 }
-
-
+//------------------------------------------------------------------------------
 void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
 {
   if (p_tree)
   {
     parse_print_indent(indent_level, '*');
-    printf(" %u:%u %s: ", p_tree->nd_src_line, p_tree->nd_src_col, g_parse_node_names[p_tree->nd_type]);
+    printf(" %u:%u %s: ", p_tree->nd_src_line, p_tree->nd_src_col,
+           g_parse_node_names[p_tree->nd_type]);
     switch (p_tree->nd_type)
     {
       case ND_NUMBER:
@@ -246,18 +240,17 @@ void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree)
     }
   }
 }
-
-
+//------------------------------------------------------------------------------
 static void parse_optional(uint8_t lx_type)
 {
   if (lx_type == g_current_lex_unit.l_type)
     lex_scan();
 }
-
-
+//------------------------------------------------------------------------------
 static void parse_expect(uint8_t lx_type_expected,
-                         bool const skip_to_next  // Should we skip over the current lex unit to the next?
-  )
+                         bool const skip_to_next)  // Should  we  skip over  the
+                                                   // current  lex  unit to  the
+                                                   // next?
 {
   if (lx_type_expected != g_current_lex_unit.l_type)
   {
@@ -270,15 +263,13 @@ static void parse_expect(uint8_t lx_type_expected,
   else if (skip_to_next)
     lex_scan();
 }
-
-
+//------------------------------------------------------------------------------
 #define SET_SRC_POS(p)                             \
 do {                                               \
   (p)->nd_src_line = g_current_lex_unit.l_line_n;  \
   (p)->nd_src_col = g_current_lex_unit.l_column_n; \
 } while (0)
-
-
+//------------------------------------------------------------------------------
 static PARSE_NODE *parse_number(void)
 {
   PARSE_NODE *retval = NULL;
@@ -290,8 +281,7 @@ static PARSE_NODE *parse_number(void)
   lex_scan();  // Skip over numeric constant.
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static PARSE_NODE *parse_variable_name(void)
 {
   PARSE_NODE *retval = NULL;
@@ -302,11 +292,9 @@ static PARSE_NODE *parse_variable_name(void)
   lex_scan();  // Skip over variable name.
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static PARSE_NODE *parse_or_expression(void);
-
-
+//------------------------------------------------------------------------------
 // factor = variable-name | number | '(' expression ')'
 static PARSE_NODE *parse_factor(void)
 {
@@ -333,8 +321,7 @@ static PARSE_NODE *parse_factor(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // term = factor (multiplicative-operator factor)*
 static PARSE_NODE *parse_term(void)
 {
@@ -367,8 +354,7 @@ static PARSE_NODE *parse_term(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // expression = ['+'|'-'] term (addition-operator term)*
 static PARSE_NODE *parse_expression(void)
 {
@@ -406,15 +392,13 @@ static PARSE_NODE *parse_expression(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static bool parse_is_comparison_operator(uint8_t lex_type)
 {
   return lex_type > LX_COMPARISON_SYMBOL_BEGIN &&
     lex_type < LX_COMPARISON_SYMBOL_END;
 }
-
-
+//------------------------------------------------------------------------------
 // comparison-expression = expression [relation-operator expression]
 static PARSE_NODE *parse_comparison_expression(void)
 {
@@ -452,8 +436,7 @@ static PARSE_NODE *parse_comparison_expression(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // and-expression = ['not'] comparison-expression ('and' comparison-expression)*
 static PARSE_NODE *parse_and_expression(void)
 {
@@ -487,8 +470,7 @@ static PARSE_NODE *parse_and_expression(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // or-expression = and-expression ('or' and-expression)*
 static PARSE_NODE *parse_or_expression(void)
 {
@@ -507,8 +489,7 @@ static PARSE_NODE *parse_or_expression(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // assignment-statement = variable-name ':=' or-expression
 static PARSE_NODE *parse_assignment(void)
 {
@@ -521,11 +502,9 @@ static PARSE_NODE *parse_assignment(void)
   retval->nd_p_assign_expr = parse_or_expression();
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static PARSE_NODE *parse_statement(void);
-
-
+//------------------------------------------------------------------------------
 // statement-sequence = (statement ';')*
 static PARSE_NODE *parse_statement_sequence(void)
 {
@@ -555,8 +534,7 @@ static PARSE_NODE *parse_statement_sequence(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // if-statement = 'if' expression 'then' statement-sequence
 //                 ['else' statement-sequence] 'end'
 static PARSE_NODE *parse_if(void)
@@ -578,8 +556,7 @@ static PARSE_NODE *parse_if(void)
   parse_expect(LX_END_KW, true);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 static PARSE_NODE *parse_while(void)
 {
   PARSE_NODE *retval = malloc(sizeof(PARSE_NODE));
@@ -592,8 +569,7 @@ static PARSE_NODE *parse_while(void)
   parse_expect(LX_END_KW, true);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 //spawn-statement = 'spawn' (name ';')+
 //                  'join' [timeout-clause]
 //
@@ -644,14 +620,13 @@ static PARSE_NODE *parse_spawn(void)
     }
     else
       retval->nd_p_statement_seq_if_not_timed_out = NULL;
+    parse_expect(LX_END_KW, true);
   }
   else
     retval->nd_type = ND_SPAWN_JOIN;
-  parse_expect(LX_END_KW, true);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // print-char-statement = 'print_char' character-constant
 static PARSE_NODE *parse_print_char(void)
 {
@@ -664,8 +639,7 @@ static PARSE_NODE *parse_print_char(void)
   lex_scan();  // Skip over character constant.
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // stop-statement = 'stop'
 static PARSE_NODE *parse_stop(void)
 {
@@ -675,8 +649,7 @@ static PARSE_NODE *parse_stop(void)
   retval->nd_type = ND_STOP;
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // print-int-statement = 'print_int' expression
 static PARSE_NODE *parse_print_int(void)
 {
@@ -687,8 +660,7 @@ static PARSE_NODE *parse_print_int(void)
   retval->nd_p_expr = parse_or_expression();
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // sleep-statement = 'sleep' expression
 static PARSE_NODE *parse_sleep(void)
 {
@@ -699,8 +671,7 @@ static PARSE_NODE *parse_sleep(void)
   retval->nd_p_expr = parse_or_expression();
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 //  print-statement = 'print' (string-constant | or-expression)
 //                    (',' (string-constant | or-expression))*
 //  Result parse tree: (OP_BEGIN_ATOMIC_PRINT [OP_PRINT_STRING|OP_PRINT_INT]+)
@@ -741,8 +712,7 @@ static PARSE_NODE *parse_print(void)
   } while (LX_COMMA_SYM == g_current_lex_unit.l_type);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // statement =
 //             assignment-statement
 //           | if-statement
@@ -789,8 +759,7 @@ static PARSE_NODE *parse_statement(void)
   }
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // task-declaration = 'task' name [';'] statement-sequence 'end'
 static PARSE_NODE *parse_task_declaration(void)
 {
@@ -806,8 +775,7 @@ static PARSE_NODE *parse_task_declaration(void)
   parse_expect(LX_END_KW, true);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 // module-declaration  =
 //                       'module' name [';']
 //                       'init' statement-sequence 'end' ';'
@@ -845,8 +813,7 @@ static PARSE_NODE *parse_module_declaration(void)
   parse_optional(LX_SEMICOLON_SYM);
   return retval;
 }
-
-
+//------------------------------------------------------------------------------
 PARSE_NODE *parse(void)
 {
   PARSE_NODE *retval;

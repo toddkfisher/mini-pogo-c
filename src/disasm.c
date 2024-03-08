@@ -6,22 +6,19 @@
 #include <signal.h>
 #include <ctype.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "lex.h"
 #include "instruction.h"
 #include "binary-header.h"
 #include "exec.h"
 #include "module.h"
-
-
+//------------------------------------------------------------------------------
 #include <enum-str.h>
 char *g_opcode_names[] =
 {
 #include "opcode-enums.txt"
 };
-
-
+//------------------------------------------------------------------------------
 static void disasm_print_label_from_addr(uint32_t addr,
                                          HEADER *p_header)
 {
@@ -31,8 +28,7 @@ static void disasm_print_label_from_addr(uint32_t addr,
       printf("%s ", p_header->hdr_p_label_list[i].hlbl_name);
   }
 }
-
-
+//------------------------------------------------------------------------------
 static void disasm_print_instruction(INSTRUCTION *p_instruct,
                                      uint32_t ip,
                                      uint32_t indent,
@@ -79,8 +75,7 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
   }
   printf("\n");
 }
-
-
+//------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
   if (argc != 2)

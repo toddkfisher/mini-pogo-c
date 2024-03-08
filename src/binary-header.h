@@ -1,6 +1,5 @@
 #pragma once
-
-
+//------------------------------------------------------------------------------
 typedef struct HEADER_LABEL HEADER_LABEL;
 struct HEADER_LABEL
 {
@@ -9,8 +8,7 @@ struct HEADER_LABEL
   uint32_t hlbl_addr;  // Address of  this lable relative to  0th instruciton in
                        // code.
 };
-
-
+//------------------------------------------------------------------------------
 typedef struct HEADER HEADER;
 struct HEADER
 {
@@ -23,8 +21,7 @@ struct HEADER
                              // source module.
   HEADER_LABEL *hdr_p_label_list;  // List of labels described above.
 };
-
-
+//------------------------------------------------------------------------------
 void bhdr_print_struct(HEADER *p_header);
 uint32_t bhdr_write(FILE *fout, HEADER *p_header);
 HEADER *bhdr_read(FILE *fin);

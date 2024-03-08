@@ -6,13 +6,11 @@
 #include <signal.h>
 #include <ctype.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include "lex.h"
 #include "binary-header.h"
 #include "instruction.h"
-
-
+//------------------------------------------------------------------------------
 // THEORY OF OPERATION:
 //
 // Header data is read from/written to g_raw_header[] using the simple functions
@@ -35,9 +33,9 @@
 //                           lbl_addr : u32 // relative to 0th instruction of code.
 //                         };
 //
-// NOTE: THESE ROUTINES ARE NOT RE-ENTRANT. (otherwise dynamic module loading won't work)
-
-
+// NOTE: THESE ROUTINES ARE NOT RE-ENTRANT. (dynamic module loading
+//       won't work)
+//------------------------------------------------------------------------------
 // Field offsets into file.
 #define HEADER_SIZE_IDX 0
 #define HEADER_N_LABELS_IDX (sizeof(uint32_t))
@@ -45,31 +43,25 @@
 #define HEADER_CODE_SIZE_IDX (HEADER_N_STRINGS_IDX + sizeof(uint32_t))
 #define HEADER_MODULE_NAME_IDX (HEADER_CODE_SIZE_IDX + sizeof(uint32_t))
 #define MAX_HEADER_SIZE 32768  // bytes
-
-
-// Blob  of  binary read  from  file.   Is converted  into  a  HEADER struct  by
-// bhdr_read().
+//------------------------------------------------------------------------------
 static uint8_t g_raw_header[MAX_HEADER_SIZE];  // Blob of binary read from or
                                                // written to file.
 static uint32_t g_idx_header = 0;
-
-
+//------------------------------------------------------------------------------
 // Place a u32 into header at "current index"
 void bhdr_add_u32_to_header(uint32_t u32)
 {
   memcpy(&g_raw_header[g_idx_header], &u32, sizeof(u32));
   g_idx_header += sizeof(u32);
 }
-
-
+//------------------------------------------------------------------------------
 // Place a u8 into header at "current index"
 static void bhdr_add_u8_to_header(uint8_t u8)
 {
   memcpy(&g_raw_header[g_idx_header], &u8, sizeof(u8));
   g_idx_header += sizeof(u8);
 }
-
-
+//------------------------------------------------------------------------------
 // Take a  C nul-terminated string and  place an equivalent counted  string into
 // the header. Format of counted string: [u32 (bytes)][byte0][byte1]...
 static void bhdr_add_counted_string_to_header(char *str)
@@ -79,8 +71,7 @@ static void bhdr_add_counted_string_to_header(char *str)
   memcpy(&g_raw_header[g_idx_header], str, n_bytes);
   g_idx_header += n_bytes;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_read_header_size(FILE *fin)
 {
   uint32_t result;
@@ -91,87 +82,81 @@ static uint32_t bhdr_read_header_size(FILE *fin)
   }
   return result;
 }
-
+//------------------------------------------------------------------------------
 // Get 4-byte unsigned at ofs from blob.
 static uint32_t bhdr_get_u32(uint32_t ofs)
 {
   uint32_t result = *((uint32_t *) (g_raw_header + ofs));
   return result;
 }
-
+//------------------------------------------------------------------------------
 // Get 1-byte unsigned at ofs from blob.
 static uint8_t bhdr_get_u8(uint32_t ofs)
 {
   uint8_t result = *((uint8_t *) (g_raw_header + ofs));
   return result;
 }
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_label_count(void)
 {
   uint32_t result = bhdr_get_u32(HEADER_N_LABELS_IDX);
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_string_count(void)
 {
   uint32_t result = bhdr_get_u32(HEADER_N_STRINGS_IDX);
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_code_size_in_bytes(void)
 {
   uint32_t result = bhdr_get_u32(HEADER_CODE_SIZE_IDX);
   return result;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_counted_string(uint32_t ofs, char *p_dest)
 {
   uint32_t string_size = bhdr_get_u32(ofs);
-  zero_mem(p_dest, string_size + 1);  // + 1 for obvious reasons if you've used C for very long.
+  zero_mem(p_dest, string_size + 1);  // + 1 for obvious  reasons if you've used
+                                      // C for very long.
   memcpy(p_dest, g_raw_header + ofs + sizeof(uint32_t), string_size);
   return string_size;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_counted_string_size(uint32_t ofs)
 {
   uint32_t n_chars = bhdr_get_u32(ofs);
   return n_chars;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_raw_read(FILE *fin, uint32_t n_header_bytes)
 {
-  uint32_t n_bytes_read = fread(g_raw_header, sizeof(uint8_t), n_header_bytes, fin);
+  uint32_t n_bytes_read = fread(g_raw_header, sizeof(uint8_t), n_header_bytes,
+                                fin);
   return n_bytes_read;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_raw_write(FILE *fout)
 {
-  uint32_t n_bytes_written = fwrite(g_raw_header, sizeof(uint8_t), g_idx_header, fout);
+  uint32_t n_bytes_written = fwrite(g_raw_header, sizeof(uint8_t), g_idx_header,
+                                    fout);
   return n_bytes_written;
 }
-
-
+//------------------------------------------------------------------------------
 static void bhdr_init(void)
 {
   zero_mem(g_raw_header, MAX_HEADER_SIZE);
   g_idx_header = 0;
 }
-
-
+//------------------------------------------------------------------------------
 static uint32_t bhdr_get_string_list_ofs(void)
 {
   uint32_t n_chars = bhdr_get_counted_string_size(HEADER_MODULE_NAME_IDX);
   uint32_t ofs = HEADER_MODULE_NAME_IDX + sizeof(uint32_t) + n_chars;
   return ofs;
 }
-
-
+//------------------------------------------------------------------------------
 // Allocate new header and arrays contained therein.
 // RETURN: NULL if memory overflow.
 static HEADER *bhdr_new(uint32_t n_labels, uint32_t n_strings)
@@ -203,8 +188,7 @@ ERROR_EXIT_1:
   free(result);
   return NULL;
 }
-
-
+//------------------------------------------------------------------------------
 HEADER *bhdr_read(FILE *fin)
 {
   uint32_t n_header_bytes;
@@ -248,7 +232,7 @@ HEADER *bhdr_read(FILE *fin)
   }
   return result;
 }
-
+//------------------------------------------------------------------------------
 void bhdr_print_struct(HEADER *p_header)
 {
   printf("      Module name = %s\n", p_header->hdr_module_name);
@@ -281,7 +265,7 @@ void bhdr_print_struct(HEADER *p_header)
     printf("--End label list--\n");
   }
 }
-
+//------------------------------------------------------------------------------
 uint32_t bhdr_write(FILE *fout, HEADER *p_header)
 {
   uint32_t result = 0;

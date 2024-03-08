@@ -2,14 +2,16 @@ module tasks;
 
 
   init
+    print "Spawing t0, t1, t2..\n";
     spawn t0; t1; t2;
-    join
-    wait 1000*60 ! one minute
-    timeout
-      print "Join timed out.\n";
-    else
-      print "Joined in one minute or less.\n";
-    end;
+    join;
+    !wait 1000*10 ! ten seconds
+    !timeout
+    !  print "Join timed out.\n";
+    !else
+    !  print "Joined in one minute or less.\n";
+    !end;
+    print "Joined.\n";
   end;
 
 

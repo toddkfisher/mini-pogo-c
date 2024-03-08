@@ -1,19 +1,17 @@
 #pragma once
+//------------------------------------------------------------------------------
 #include <stdint.h>
 #include <stdbool.h>
 #include <util.h>
-
-
+//------------------------------------------------------------------------------
 #include <enum-int.h>
 enum PARSE_NODE_TYPES
 {
 #include "parse-node-enum.txt"
 };
-
-
+//------------------------------------------------------------------------------
 typedef struct PARSE_NODE PARSE_NODE;
-
-
+//------------------------------------------------------------------------------
 // List of random stuff living in PARSE_NODEs
 typedef struct LISTITEM LISTITEM;
 struct LISTITEM
@@ -26,8 +24,7 @@ struct LISTITEM
     char l_string[MAX_STR];
   };
 };
-
-
+//------------------------------------------------------------------------------
 struct PARSE_NODE
 {
   uint8_t nd_type;
@@ -105,7 +102,6 @@ struct PARSE_NODE
     //  nd_type == ND_STOP (no subtree(s) or other infotainment).
   };
 };
-
-
+//------------------------------------------------------------------------------
 PARSE_NODE *parse(void);
 void parse_print_tree(uint32_t indent_level, PARSE_NODE *const p_tree);
