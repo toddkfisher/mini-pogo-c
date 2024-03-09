@@ -608,7 +608,6 @@ static PARSE_NODE *parse_spawn(void)
     //                                   'timeout' statement-sequence
     //                                   ['else' statement-sequence]
     //                                   'end'
-    retval->nd_type = ND_SPAWN_JOIN_WITH_TIMEOUT;
     lex_scan();  // Skip past 'wait'.
     retval->nd_p_millisec_expr = parse_or_expression();
     parse_expect(LX_TIMEOUT_KW, true);

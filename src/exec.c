@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <time.h>
 #include <pthread.h>
 #include <util.h>
 //------------------------------------------------------------------------------
@@ -93,6 +94,22 @@ void exec_run_then_join_spawn(TASK *p_parent_task)
     STACK_DROP(p_parent_task);
     STACK_DROP(p_parent_task);
   }
+}
+//------------------------------------------------------------------------------
+void exec_sleep(TASK *p_task)
+{
+  uint32_t msec = POP(p_task);
+  struct timespec sleep_period;
+  if (msec < 0)
+    msec = -msec;
+  zero_mem(&sleep_period, sizeof(struct timespec));
+  sleep_period.tv_sec = msec/1000;
+#define NSEC_PER_MSEC 1000000
+  sleep_period.tv_nsec = (msec%1000)*NSEC_PER_MSEC;
+  p_task->task_state = ST_SLEEPING;
+  nanosleep(&sleep_period, NULL);
+  p_task->task_state = ST_RUNNING;
+  p_task->task_ip += 1;
 }
 //------------------------------------------------------------------------------
 #define BINARY_OP(operator)                                       \
@@ -228,13 +245,7 @@ void *exec_run_task(void *pv_task)
         p_task->task_ip += 1;
         break;
       case OP_SLEEP:
-        x = POP(p_task);
-        if (x < 0)
-          x = -x;
-        p_task->task_state = ST_SLEEPING;
-        sleep((unsigned int) x);
-        p_task->task_state = ST_RUNNING;
-        p_task->task_ip += 1;
+        exec_sleep(p_task);
         break;
       case OP_TEST_AND_JUMP_IF_ZERO:
         if (0 == STACK_PEEK(p_task, 0))

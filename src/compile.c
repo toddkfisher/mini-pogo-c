@@ -70,13 +70,13 @@ void compile_OP_JOIN(void)
   g_code[g_ip++].i_opcode = OP_JOIN;
 }
 //------------------------------------------------------------------------------
-static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
+void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
 {
   uint32_t n_spawn_tasks = 0;
   uint32_t begin_spawn_addr = g_ip;
   // "spawn t0; t1; t2; end"
   // compiles to:
-  //     BEGIN_SPAWN
+  //     BEGIN_SPAWN 3
   //     SPAWN <addr of t0>
   //     SPAWN <addr of t1>
   //     SPAWN <addr of t2>
@@ -117,7 +117,56 @@ static void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     compile_OP_SPAWN(task_addr);
   }
   g_code[begin_spawn_addr].i_n_spawn_tasks = n_spawn_tasks;
-  compile_OP_JOIN();
+  compile_OP_JOIN();  // ******REMOVE WHEN TIMEOUT IMPLEMENTED******
+#if 0
+  //  spawn t0;t1;t2;
+  //  wait 1000*2
+  //  timeout
+  //    print "join timed out";
+  //  else
+  //    print "join successful"
+  //  end
+  //
+  // Compiles to:
+  //
+  //   BEGIN_SPAWN 3
+  //   SPAWN t0
+  //   SPAWN t1
+  //   SPAWN t2
+  //   PUSH_INT_CONST 1000
+  //   PUSH_INT_CONST 2
+  //   MULTIPLY
+  //   WAIT_JUMP L0  <- wait_jump_addr (L0 gets poked here)
+  //   ATOMIC_PRINT "join timed out"
+  //   JUMP L1 <- jump_over_else_addr (L1 gets poked here)
+  // L0:
+  //   ATOMIC_PRINT "join successful"
+  // L1:
+  if (p_nd_spawn->nd_p_millisec_expr)  // nd_p_millisec_expr != NULL if we have a timeout.
+  {
+    uint32_t wait_jump_addr;
+    uint32_t jump_over_else_addr;
+    // Compile in a similar fashion to 'if'/'then'/'else'
+    compile(p_nd_spawn->nd_p_millisec_expr);
+    wait_jump_addr = g_ip;
+    compile_OP_WAIT_JUMP();
+    if (p_nd_spawn->nd_p_statement_seq_if_timed_out)
+      compile(p_nd_spawn->nd_p_statement_seq_if_timed_out);
+    jump_over_else_addr = g_ip;
+    g_code[g_ip].i_opcode = OP_JUMP;
+    g_ip += 1;
+    if (p_nd_spawn->nd_p_statement_seq_if_not_timed_out)
+    {
+      g_code[wait_jump_addr].i_jump_addr = g_ip;
+      compile(p_nd_spawn->nd_p_statement_seq_if_not_timed_out);
+    }
+    g_code[jump_over_else_addr].i_jump_addr = g_ip;
+  }
+  else  // No timeout.
+  {
+    compile_OP_JOIN();
+  }
+#endif
 }
 //------------------------------------------------------------------------------
 static void compile_ND_AND(PARSE_NODE *p_tree)

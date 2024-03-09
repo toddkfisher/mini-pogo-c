@@ -28,7 +28,7 @@ MPD_OBJS=disasm.o lex.o binary-header.o module.o
 
 # mph: header printer (m)ini (p)ogo (h)eader
 MPH=$(BIN_DIR)/mph
-MPH_OBJS= header-print.o lex.o binary-header.o
+MPH_OBJS=header-print.o lex.o binary-header.o
 
 # mpr: run compiled module (m)ini (p)ogo (r)un
 MPR=$(BIN_DIR)/mpr
@@ -49,6 +49,11 @@ $(MPD) : $(foreach ofile, $(MPD_OBJS), $(O_DIR)/$(ofile))
 
 $(MPR) : $(foreach ofile, $(MPR_OBJS), $(O_DIR)/$(ofile))
 = $(CC) -o $@ $^ $(LINKFLAGS) -lpthread
+
+#--------------------------------------------------------------------------------
+
+clean :
+= cd $(ROOT_DIR); rm $(BIN_DIR)/*; rm $(O_DIR)/*
 
 #--------------------------------------------------------------------------------
 

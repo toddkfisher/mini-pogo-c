@@ -23,6 +23,7 @@ struct INSTRUCTION {
     //          OP_JUMP_IF_NONZERO
     //          OP_TEST_AND_JUMP_IF_ZERO
     //          OP_TEST_AND_JUMP_IF_NONZERO
+    //          OP_WAIT_JUMP
     uint32_t i_jump_addr;
     // opcode: OP_BEGIN_SPAWN
     uint32_t i_n_spawn_tasks;
