@@ -25,12 +25,16 @@ struct TASK
 {
   pthread_t task_thread_id;
   char task_name[MAX_STR];
-  MODULE *task_p_module;               // Module that this task belongs to.
-  int32_t task_variables[26];          // A-Z cheesy variables per task.
-  int32_t task_stack[STACK_SIZE];      // Mini-pogo runs on a stack machine.
+  MODULE *task_p_module;  // Module that this task belongs to.
+  int32_t task_variables[26];  // A-Z cheesy variables per task.
+  int32_t task_stack[STACK_SIZE]; // Mini-pogo runs on a stack machine.
   uint32_t task_stack_top;
-  uint32_t task_ip;                    // Instruction pointer to module code block.
+  uint32_t task_ip;  // Instruction pointer to module code block.
   uint32_t task_state;
   uint32_t task_state_flags;
-  uint32_t task_n_spawn_tasks;
+  atomic_uint task_n_spawn_running;  // How many tasks in a 'spawn' statement
+                                     // have yet to stop?
+  uint32_t task_n_spawn_tasks; // How many tasks in a 'spawn' statement?
+                               // Operand of OP_BEGIN_SPAWN.
+  TASK *task_p_parent;
 };

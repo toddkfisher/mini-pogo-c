@@ -52,6 +52,7 @@ static void disasm_print_instruction(INSTRUCTION *p_instruct,
     case OP_JUMP_IF_NONZERO:
     case OP_TEST_AND_JUMP_IF_ZERO:
     case OP_TEST_AND_JUMP_IF_NONZERO:
+    case OP_WAIT_JUMP:
       disasm_print_label_from_addr(p_instruct->i_jump_addr, p_header);
       break;
     case OP_SPAWN:

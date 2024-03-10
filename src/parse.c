@@ -50,14 +50,14 @@
 // ND_STOP:
 //           stop-statement = 'stop'
 //
-// ND_SPAWN_JOIN or ND_SPAWN_JOIN_WITH_TIMEOUT:
+// ND_SPAWN:
 //          spawn-statement = 'spawn' (name ';')+
 //                            'join' [timeout-clause]
 //
-//           timeout-clause = 'wait' time-unit '(' expression ')'
-//                            'timeout' statement-sequence
-//                            ['else' statement-sequence]
-//                            'end'
+//           timeout = 'wait' time-unit '(' expression ')'
+//                      'timeout' statement-sequence
+//                      ['else' statement-sequence]
+//                      'end'
 // ND_SLEEP:
 //          sleep-statement = 'sleep' time-unit '(' expression ')'
 //
@@ -571,12 +571,12 @@ static PARSE_NODE *parse_while(void)
 }
 //------------------------------------------------------------------------------
 //spawn-statement = 'spawn' (name ';')+
-//                  'join' [timeout-clause]
+//                  'join' [timeout]
 //
-// timeout-clause = 'wait' expression
-//                  'timeout' statement-sequence
-//                  ['else' statement-sequence]
-//                  'end'
+// timeout = 'wait' expression
+//            'timeout' statement-sequence
+//            ['else' statement-sequence]
+//            'end'
 static PARSE_NODE *parse_spawn(void)
 {
   PARSE_NODE *retval = malloc(sizeof(PARSE_NODE));
@@ -604,10 +604,10 @@ static PARSE_NODE *parse_spawn(void)
   lex_scan();  // Skip past 'join'.
   if (LX_WAIT_KW == g_current_lex_unit.l_type)
   {
-    // parse 2nd part : timeout-clause = 'wait' expression
-    //                                   'timeout' statement-sequence
-    //                                   ['else' statement-sequence]
-    //                                   'end'
+    // parse 2nd part : timeout = 'wait' expression
+    //                            'timeout' statement-sequence
+    //                            ['else' statement-sequence]
+    //                            'end'
     lex_scan();  // Skip past 'wait'.
     retval->nd_p_millisec_expr = parse_or_expression();
     parse_expect(LX_TIMEOUT_KW, true);

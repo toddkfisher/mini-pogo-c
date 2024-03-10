@@ -70,6 +70,11 @@ void compile_OP_JOIN(void)
   g_code[g_ip++].i_opcode = OP_JOIN;
 }
 //------------------------------------------------------------------------------
+void compile_OP_WAIT_JUMP(void)
+{
+  g_code[g_ip++].i_opcode = OP_WAIT_JUMP;
+}
+//------------------------------------------------------------------------------
 void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
 {
   uint32_t n_spawn_tasks = 0;
@@ -117,8 +122,6 @@ void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     compile_OP_SPAWN(task_addr);
   }
   g_code[begin_spawn_addr].i_n_spawn_tasks = n_spawn_tasks;
-  compile_OP_JOIN();  // ******REMOVE WHEN TIMEOUT IMPLEMENTED******
-#if 0
   //  spawn t0;t1;t2;
   //  wait 1000*2
   //  timeout
@@ -136,7 +139,7 @@ void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
   //   PUSH_INT_CONST 1000
   //   PUSH_INT_CONST 2
   //   MULTIPLY
-  //   WAIT_JUMP L0  <- wait_jump_addr (L0 gets poked here)
+  //   WAIT_JUMP L0  <- else_jump_addr (L0 gets poked here)
   //   ATOMIC_PRINT "join timed out"
   //   JUMP L1 <- jump_over_else_addr (L1 gets poked here)
   // L0:
@@ -144,11 +147,12 @@ void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
   // L1:
   if (p_nd_spawn->nd_p_millisec_expr)  // nd_p_millisec_expr != NULL if we have a timeout.
   {
-    uint32_t wait_jump_addr;
+    char jump_label_name[MAX_STR];
+    uint32_t else_jump_addr;
     uint32_t jump_over_else_addr;
     // Compile in a similar fashion to 'if'/'then'/'else'
     compile(p_nd_spawn->nd_p_millisec_expr);
-    wait_jump_addr = g_ip;
+    else_jump_addr = g_ip;
     compile_OP_WAIT_JUMP();
     if (p_nd_spawn->nd_p_statement_seq_if_timed_out)
       compile(p_nd_spawn->nd_p_statement_seq_if_timed_out);
@@ -157,16 +161,21 @@ void compile_ND_SPAWN(PARSE_NODE *p_nd_spawn)
     g_ip += 1;
     if (p_nd_spawn->nd_p_statement_seq_if_not_timed_out)
     {
-      g_code[wait_jump_addr].i_jump_addr = g_ip;
+      compile_create_label_name("ELSE", jump_label_name);
+      symtab_add_jump_label(jump_label_name, g_ip);
+      g_n_labels += 1;
+      g_code[else_jump_addr].i_jump_addr = g_ip;
       compile(p_nd_spawn->nd_p_statement_seq_if_not_timed_out);
     }
+    compile_create_label_name("END-SPAWN", jump_label_name);
+    symtab_add_jump_label(jump_label_name, g_ip);
+    g_n_labels += 1;
     g_code[jump_over_else_addr].i_jump_addr = g_ip;
   }
   else  // No timeout.
   {
     compile_OP_JOIN();
   }
-#endif
 }
 //------------------------------------------------------------------------------
 static void compile_ND_AND(PARSE_NODE *p_tree)
